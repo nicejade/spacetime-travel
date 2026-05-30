@@ -1,0 +1,29 @@
+{
+  "name": "spacetime-travel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n api,vite -c cyan,magenta \"pnpm api\" \"pnpm client\"",
+    "client": "vite --host 0.0.0.0 --port 5188 --strictPort",
+    "api": "node --watch server/index.js",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "@lucide/svelte": "^1.17.0",
+    "@tailwindcss/vite": "^4.1.0",
+    "better-sqlite3": "^11.10.0",
+    "d3-geo": "^3.1.1",
+    "express": "^5.1.0",
+    "svelte": "^5.0.0",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "concurrently": "^9.1.2",
+    "vite": "^6.0.0"
+  }
+}

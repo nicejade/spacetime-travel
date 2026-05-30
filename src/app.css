@@ -1,0 +1,185 @@
+@import 'tailwindcss';
+
+:root {
+  color: #182633;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(226, 112, 91, 0.18), transparent 26rem),
+    radial-gradient(circle at 78% 18%, rgba(65, 132, 145, 0.2), transparent 30rem),
+    linear-gradient(135deg, #f3fbfb 0%, #faf7f2 48%, #eef6ef 100%);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  touch-action: manipulation;
+}
+
+.glass-panel {
+  border: 1px solid rgba(62, 86, 91, 0.16);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 24px 70px rgba(25, 47, 65, 0.16);
+  backdrop-filter: blur(18px);
+}
+
+.icon-button {
+  display: inline-grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  border: 1px solid rgba(31, 54, 63, 0.13);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #203340;
+  transition:
+    transform 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease;
+}
+
+.icon-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(226, 112, 91, 0.36);
+  background: #fff;
+}
+
+.icon-button:focus-visible,
+.field:focus-visible,
+.select-field:focus-visible,
+.text-field:focus-visible {
+  outline: 3px solid rgba(58, 132, 145, 0.28);
+  outline-offset: 2px;
+}
+
+.field,
+.select-field,
+.text-field {
+  width: 100%;
+  border: 1px solid rgba(31, 54, 63, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #1d2d38;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.field,
+.select-field {
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.text-field {
+  min-height: 104px;
+  padding: 12px;
+  resize: vertical;
+}
+
+.field:hover,
+.select-field:hover,
+.text-field:hover {
+  border-color: rgba(58, 132, 145, 0.36);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease;
+}
+
+.primary-button {
+  border: 1px solid rgba(20, 92, 111, 0.34);
+  background: linear-gradient(135deg, #235f73, #3b8a91);
+  color: white;
+  box-shadow: 0 16px 34px rgba(35, 95, 115, 0.28);
+}
+
+.secondary-button {
+  border: 1px solid rgba(31, 54, 63, 0.14);
+  background: rgba(255, 255, 255, 0.76);
+  color: #1f3640;
+}
+
+.danger-button {
+  border: 1px solid rgba(170, 62, 54, 0.3);
+  background: rgba(255, 247, 245, 0.9);
+  color: #9b352e;
+}
+
+.primary-button:hover,
+.secondary-button:hover,
+.danger-button:hover {
+  transform: translateY(-1px);
+}
+
+.route-flight {
+  stroke: #dd6f5c;
+}
+
+.route-train {
+  stroke: #2d7c89;
+}
+
+.route-ferry {
+  stroke: #4c7fb3;
+}
+
+.route-drive {
+  stroke: #9c7a34;
+}
+
+.route-walk {
+  stroke: #6d8f58;
+}
+
+.route-bus {
+  stroke: #6b7ba8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
