@@ -1,9 +1,10 @@
-<script>
+<script lang="ts">
   import { formatMonth, ratingText } from '$lib/format';
+  import type { Trip } from '$lib/types';
 
-  export let trips = [];
-  export let selectedVisitId = null;
-  export let onSelectVisit = () => {};
+  export let trips: Trip[] = [];
+  export let selectedVisitId: number | null = null;
+  export let onSelectVisit: (id: number) => void = () => {};
 
   $: visits = trips
     .flatMap((trip) => trip.visits.map((visit) => ({ ...visit, trip })))

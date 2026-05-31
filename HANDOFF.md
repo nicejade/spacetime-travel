@@ -12,7 +12,7 @@ The app has:
 - Create, edit, and delete flows for visits.
 - SQLite schema creation and seed data.
 - A Vite frontend on `http://localhost:5188`.
-- An Express API on `http://localhost:5174`.
+- An Express API on `http://localhost:5168`.
 
 ## Latest User Request
 

@@ -1,19 +1,20 @@
-<script>
+<script lang="ts">
   import { Save, X } from '@lucide/svelte';
   import { createVisit, updateVisit } from '$lib/api';
   import { transports } from '$lib/format';
+  import type { Trip, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
 
-  export let mode = 'create';
-  export let trips = [];
-  export let visit = null;
-  export let trip = null;
-  export let onClose = () => {};
-  export let onSaved = () => {};
+  export let mode: 'create' | 'edit' = 'create';
+  export let trips: Trip[] = [];
+  export let visit: Visit | null = null;
+  export let trip: Trip | null = null;
+  export let onClose: () => void = () => {};
+  export let onSaved: (result: VisitMutationResult) => void = () => {};
 
   let busy = false;
   let error = '';
   let lastKey = '';
-  let values = buildValues();
+  let values: VisitPayload = buildValues();
 
   $: key = `${mode}:${visit?.id ?? 'new'}:${trips.length}`;
   $: if (key !== lastKey) {
@@ -22,7 +23,7 @@
     lastKey = key;
   }
 
-  function buildValues() {
+  function buildValues(): VisitPayload {
     if (mode === 'edit' && visit) {
       return {
         tripId: visit.tripId,
@@ -79,7 +80,7 @@
       const result = mode === 'edit' && visit ? await updateVisit(visit.id, payload) : await createVisit(payload);
       onSaved(result);
     } catch (submitError) {
-      error = submitError.message;
+      error = submitError instanceof Error ? submitError.message : '保存失败';
     } finally {
       busy = false;
     }

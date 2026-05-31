@@ -1,26 +1,30 @@
-<script>
+<script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { Pause, Play, Plus, RotateCcw, ZoomIn, ZoomOut } from '@lucide/svelte';
   import { geoEquirectangular, geoGraticule, geoPath } from 'd3-geo';
   import { feature } from 'topojson-client';
   import countries110m from 'world-atlas/countries-110m.json';
   import { formatMonth, transportClass, transportDash } from '$lib/format';
+  import type { Trip } from '$lib/types';
 
-  export let trips = [];
-  export let selectedVisitId = null;
-  export let onSelectVisit = () => {};
-  export let onCreate = () => {};
+  export let trips: Trip[] = [];
+  export let selectedVisitId: number | null = null;
+  export let onSelectVisit: (id: number) => void = () => {};
+  export let onCreate: () => void = () => {};
 
   const mapWidth = 2400;
   const mapHeight = 1200;
   const projection = geoEquirectangular().fitSize([mapWidth, mapHeight], { type: 'Sphere' });
   const pathGenerator = geoPath(projection);
-  const countryFeatures = feature(countries110m, countries110m.objects.countries).features;
+  const countryFeatures = feature(
+    countries110m as Parameters<typeof feature>[0],
+    countries110m.objects.countries
+  ).features;
   const graticule = geoGraticule().step([30, 30]);
   const graticulePath = pathGenerator(graticule());
   const spherePath = pathGenerator({ type: 'Sphere' });
 
-  let shell;
+  let shell: HTMLElement;
   let viewportWidth = 1280;
   let viewportHeight = 820;
   let pan = { x: 0, y: 0 };
@@ -29,10 +33,10 @@
   let dragging = false;
   let lastPointer = { x: 0, y: 0 };
   let playing = false;
-  let playTimer;
+  let playTimer: ReturnType<typeof setInterval> | undefined;
   let playbackIndex = 0;
   let controlStatus = 'Ready';
-  let statusTimer;
+  let statusTimer: ReturnType<typeof setTimeout> | undefined;
 
   $: plottedTrips = trips.map((trip) => ({
     ...trip,
@@ -65,7 +69,7 @@
     clearTimeout(statusTimer);
   });
 
-  function clamp(value, min, max) {
+  function clamp(value: number, min: number, max: number) {
     return Math.min(max, Math.max(min, value));
   }
 
@@ -79,7 +83,7 @@
     setControlStatus('View reset');
   }
 
-  function zoomAt(factor, clientX = viewportWidth / 2, clientY = viewportHeight / 2) {
+  function zoomAt(factor: number, clientX = viewportWidth / 2, clientY = viewportHeight / 2) {
     const nextScale = clamp(scale * factor, 0.22, 4.6);
     const worldX = (clientX - pan.x) / scale;
     const worldY = (clientY - pan.y) / scale;
@@ -91,13 +95,13 @@
     setControlStatus(`Zoom ${Math.round(nextScale * 100)}%`);
   }
 
-  function handleWheel(event) {
+  function handleWheel(event: WheelEvent) {
     event.preventDefault();
     const rect = shell.getBoundingClientRect();
     zoomAt(event.deltaY > 0 ? 0.9 : 1.12, event.clientX - rect.left, event.clientY - rect.top);
   }
 
-  function startPan(event) {
+  function startPan(event: PointerEvent) {
     if (event.target instanceof Element && event.target.closest('.canvas-controls')) return;
     if (event.button !== 0) return;
     dragging = true;

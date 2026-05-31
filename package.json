@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -n api,vite -c cyan,magenta \"pnpm api\" \"pnpm client\"",
-    "client": "vite --host 0.0.0.0 --port 5188 --strictPort",
-    "api": "node --watch server/index.js",
+    "client": "vite --host 0.0.0.0 --port 5167 --strictPort",
+    "api": "tsx watch server/index.ts",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "start": "node server/index.js"
+    "start": "tsx server/index.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@lucide/svelte": "^1.17.0",
@@ -23,7 +24,15 @@
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/d3-geo": "^3.1.0",
+    "@types/express": "^5.0.6",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^25.9.1",
+    "@types/topojson-client": "^3.1.5",
     "concurrently": "^9.1.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
     "vite": "^6.0.0"
   }
 }

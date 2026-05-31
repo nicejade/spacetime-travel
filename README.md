@@ -61,7 +61,7 @@ http://localhost:5188
 The API runs on:
 
 ```text
-http://localhost:5174
+http://localhost:5168
 ```
 
 The frontend uses Vite proxying so browser requests to `/api/*` are forwarded to the local API.
@@ -84,7 +84,7 @@ Starts only the Vite frontend on port `5188`.
 pnpm api
 ```
 
-Starts only the Express API on port `5174`.
+Starts only the Express API on port `5168`.
 
 ```bash
 pnpm build

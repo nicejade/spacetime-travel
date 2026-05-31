@@ -2,6 +2,74 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { HttpError, ParsedVisitPayload, VisitPayloadInput } from './types.js';
+
+function httpError(status: number, message: string): HttpError {
+  const error = new Error(message) as HttpError;
+  error.status = status;
+  return error;
+}
+
+interface TripRow {
+  id: number;
+  title: string;
+  subtitle: string;
+  started_at: string | null;
+  ended_at: string | null;
+  color: string;
+  notes: string;
+}
+
+interface LegRow {
+  id: number;
+  trip_id: number;
+  from_visit_id: number;
+  to_visit_id: number;
+  transport: string;
+  duration_hours: number | null;
+  distance_km: number | null;
+  note: string;
+  sequence: number;
+}
+
+interface DbVisitRow {
+  id: number;
+  trip_id: number;
+  location_id: number;
+  sequence: number;
+  arrived_at: string;
+  departed_at: string | null;
+  feeling: string;
+  food: string;
+  rating: number;
+  mood: string;
+  weather: string;
+  memory: string;
+  tags: string;
+}
+
+interface VisitRow {
+  id: number;
+  trip_id: number;
+  location_id: number;
+  arrived_at: string;
+  departed_at: string | null;
+  feeling: string;
+  food: string;
+  rating: number;
+  mood: string;
+  weather: string;
+  memory: string;
+  tags: string;
+  sequence: number;
+  location_name: string;
+  country: string;
+  lat: number;
+  lng: number;
+  kind: string;
+  inbound_transport: string | null;
+  inbound_note: string | null;
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.resolve(__dirname, '..', 'data');
@@ -311,7 +379,7 @@ const seedDatabase = db.transaction(() => {
       }).lastInsertRowid
     );
 
-    let previousVisitId = null;
+    let previousVisitId: number | null = null;
 
     trip.visits.forEach((visit, index) => {
       const [name, country, lat, lng] = visit.location;
@@ -360,7 +428,7 @@ const seedDatabase = db.transaction(() => {
   }
 });
 
-if (db.prepare('SELECT COUNT(*) AS count FROM trips').get().count === 0) {
+if ((db.prepare('SELECT COUNT(*) AS count FROM trips').get() as { count: number }).count === 0) {
   seedDatabase();
 }
 
@@ -388,7 +456,7 @@ const legRowsByTrip = db.prepare(`
   ORDER BY sequence ASC
 `);
 
-const normalizeTrip = (trip) => ({
+const normalizeTrip = (trip: TripRow) => ({
   id: trip.id,
   title: trip.title,
   subtitle: trip.subtitle,
@@ -396,8 +464,8 @@ const normalizeTrip = (trip) => ({
   endedAt: trip.ended_at,
   color: trip.color,
   notes: trip.notes,
-  visits: visitRowsByTrip.all(trip.id).map(normalizeVisit),
-  legs: legRowsByTrip.all(trip.id).map((leg) => ({
+  visits: (visitRowsByTrip.all(trip.id) as VisitRow[]).map(normalizeVisit),
+  legs: (legRowsByTrip.all(trip.id) as LegRow[]).map((leg) => ({
     id: leg.id,
     tripId: leg.trip_id,
     fromVisitId: leg.from_visit_id,
@@ -410,7 +478,7 @@ const normalizeTrip = (trip) => ({
   }))
 });
 
-function normalizeVisit(row) {
+function normalizeVisit(row: VisitRow) {
   return {
     id: row.id,
     tripId: row.trip_id,
@@ -438,7 +506,9 @@ function normalizeVisit(row) {
 }
 
 export function getAtlas() {
-  const trips = db.prepare('SELECT * FROM trips ORDER BY started_at ASC, id ASC').all().map(normalizeTrip);
+  const trips = (db.prepare('SELECT * FROM trips ORDER BY started_at ASC, id ASC').all() as TripRow[]).map(
+    normalizeTrip
+  );
   const visits = trips.flatMap((trip) => trip.visits);
   const countries = new Set(visits.map((visit) => visit.location.country));
   const ratings = visits.map((visit) => Number(visit.rating)).filter(Number.isFinite);
@@ -460,45 +530,39 @@ export function getAtlas() {
   };
 }
 
-function cleanString(value, fallback = '') {
+function cleanString(value: unknown, fallback = ''): string {
   if (typeof value !== 'string') return fallback;
   return value.trim();
 }
 
-function cleanNumber(value, fallback = null) {
+function cleanNumber(value: unknown, fallback: number | null = null): number | null {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
 
-function cleanRating(value) {
-  const rating = cleanNumber(value, 4);
+function cleanRating(value: unknown): number {
+  const rating = cleanNumber(value, 4) ?? 4;
   return Math.max(1, Math.min(5, Number(rating.toFixed(1))));
 }
 
-function requireText(payload, key, label) {
+function requireText(payload: VisitPayloadInput, key: keyof VisitPayloadInput, label: string): string {
   const value = cleanString(payload[key]);
   if (!value) {
-    const error = new Error(`${label}不能为空`);
-    error.status = 400;
-    throw error;
+    throw httpError(400, `${label}不能为空`);
   }
   return value;
 }
 
-function readVisitPayload(payload) {
+function readVisitPayload(payload: VisitPayloadInput): ParsedVisitPayload {
   const lat = cleanNumber(payload.lat);
   const lng = cleanNumber(payload.lng);
 
   if (lat === null || lat < -90 || lat > 90) {
-    const error = new Error('纬度需要在 -90 到 90 之间');
-    error.status = 400;
-    throw error;
+    throw httpError(400, '纬度需要在 -90 到 90 之间');
   }
 
   if (lng === null || lng < -180 || lng > 180) {
-    const error = new Error('经度需要在 -180 到 180 之间');
-    error.status = 400;
-    throw error;
+    throw httpError(400, '经度需要在 -180 到 180 之间');
   }
 
   return {
@@ -524,7 +588,7 @@ function readVisitPayload(payload) {
   };
 }
 
-function updateTripDates(tripId) {
+function updateTripDates(tripId: number) {
   const dates = db
     .prepare(
       `
@@ -535,7 +599,9 @@ function updateTripDates(tripId) {
       WHERE trip_id = ?
     `
     )
-    .get(tripId);
+    .get(tripId) as { started_at: string; ended_at: string } | undefined;
+
+  if (!dates) return;
 
   db.prepare(
     `
@@ -546,7 +612,7 @@ function updateTripDates(tripId) {
   ).run(dates.started_at, dates.ended_at, tripId);
 }
 
-function createTripForPayload(payload) {
+function createTripForPayload(payload: ParsedVisitPayload) {
   const title = payload.newTripTitle || `${payload.locationName} 的旅行`;
   return Number(
     insertTrip.run({
@@ -560,17 +626,17 @@ function createTripForPayload(payload) {
   );
 }
 
-export const createVisit = db.transaction((rawPayload) => {
+export const createVisit = db.transaction((rawPayload: VisitPayloadInput) => {
   const payload = readVisitPayload(rawPayload);
   const existingTrip =
     payload.tripId && payload.tripId !== 'new'
-      ? db.prepare('SELECT * FROM trips WHERE id = ?').get(payload.tripId)
+      ? (db.prepare('SELECT * FROM trips WHERE id = ?').get(payload.tripId) as TripRow | undefined)
       : null;
   const tripId = existingTrip ? existingTrip.id : createTripForPayload(payload);
 
   const previousVisit = db
     .prepare('SELECT * FROM visits WHERE trip_id = ? ORDER BY sequence DESC LIMIT 1')
-    .get(tripId);
+    .get(tripId) as DbVisitRow | undefined;
   const nextSequence = previousVisit ? previousVisit.sequence + 1 : 1;
 
   const locationId = Number(
@@ -617,14 +683,12 @@ export const createVisit = db.transaction((rawPayload) => {
   return { visitId, tripId };
 });
 
-export const updateVisit = db.transaction((visitId, rawPayload) => {
+export const updateVisit = db.transaction((visitId: number, rawPayload: VisitPayloadInput) => {
   const payload = readVisitPayload(rawPayload);
-  const current = db.prepare('SELECT * FROM visits WHERE id = ?').get(visitId);
+  const current = db.prepare('SELECT * FROM visits WHERE id = ?').get(visitId) as DbVisitRow | undefined;
 
   if (!current) {
-    const error = new Error('旅行节点不存在');
-    error.status = 404;
-    throw error;
+    throw httpError(404, '旅行节点不存在');
   }
 
   db.prepare(
@@ -672,8 +736,8 @@ export const updateVisit = db.transaction((visitId, rawPayload) => {
 
   const previousVisit = db
     .prepare('SELECT * FROM visits WHERE trip_id = ? AND sequence < ? ORDER BY sequence DESC LIMIT 1')
-    .get(current.trip_id, current.sequence);
-  const incomingLeg = db.prepare('SELECT * FROM legs WHERE to_visit_id = ?').get(visitId);
+    .get(current.trip_id, current.sequence) as DbVisitRow | undefined;
+  const incomingLeg = db.prepare('SELECT * FROM legs WHERE to_visit_id = ?').get(visitId) as LegRow | undefined;
 
   if (previousVisit && incomingLeg) {
     db.prepare(
@@ -700,10 +764,10 @@ export const updateVisit = db.transaction((visitId, rawPayload) => {
   return { visitId, tripId: current.trip_id };
 });
 
-function resequenceTrip(tripId) {
+function resequenceTrip(tripId: number) {
   const visits = db
     .prepare('SELECT id FROM visits WHERE trip_id = ? ORDER BY sequence ASC, arrived_at ASC')
-    .all(tripId);
+    .all(tripId) as { id: number }[];
 
   visits.forEach((visit, index) => {
     db.prepare('UPDATE visits SET sequence = ? WHERE id = ?').run(index + 1, visit.id);
@@ -711,26 +775,26 @@ function resequenceTrip(tripId) {
 
   const legs = db
     .prepare('SELECT id FROM legs WHERE trip_id = ? ORDER BY sequence ASC')
-    .all(tripId);
+    .all(tripId) as { id: number }[];
 
   legs.forEach((leg, index) => {
     db.prepare('UPDATE legs SET sequence = ? WHERE id = ?').run(index + 1, leg.id);
   });
 }
 
-export const deleteVisit = db.transaction((visitId) => {
-  const current = db.prepare('SELECT * FROM visits WHERE id = ?').get(visitId);
+export const deleteVisit = db.transaction((visitId: number) => {
+  const current = db.prepare('SELECT * FROM visits WHERE id = ?').get(visitId) as DbVisitRow | undefined;
 
   if (!current) {
-    const error = new Error('旅行节点不存在');
-    error.status = 404;
-    throw error;
+    throw httpError(404, '旅行节点不存在');
   }
 
   db.prepare('DELETE FROM legs WHERE from_visit_id = ? OR to_visit_id = ?').run(visitId, visitId);
   db.prepare('DELETE FROM visits WHERE id = ?').run(visitId);
 
-  const remaining = db.prepare('SELECT COUNT(*) AS count FROM visits WHERE trip_id = ?').get(current.trip_id);
+  const remaining = db
+    .prepare('SELECT COUNT(*) AS count FROM visits WHERE trip_id = ?')
+    .get(current.trip_id) as { count: number };
   if (remaining.count === 0) {
     db.prepare('DELETE FROM trips WHERE id = ?').run(current.trip_id);
   } else {

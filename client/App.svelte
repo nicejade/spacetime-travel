@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { CalendarDays, Globe, MapPinned, Plus, RefreshCw, Route, Star } from '@lucide/svelte';
   import TimelineStrip from './components/TimelineStrip.svelte';
@@ -6,17 +6,18 @@
   import TripPanel from './components/TripPanel.svelte';
   import VisitForm from './components/VisitForm.svelte';
   import { deleteVisit, fetchAtlas } from '$lib/api';
+  import type { Atlas, Visit, VisitMutationResult } from '$lib/types';
 
-  let atlas = null;
+  let atlas: Atlas | null = null;
   let loading = true;
   let error = '';
   let notice = '';
-  let selectedTripId = 'all';
-  let selectedVisitId = null;
+  let selectedTripId: number | 'all' = 'all';
+  let selectedVisitId: number | null = null;
   let editorOpen = false;
-  let editorMode = 'create';
-  let editingVisit = null;
-  let noticeTimer;
+  let editorMode: 'create' | 'edit' = 'create';
+  let editingVisit: Visit | null = null;
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
   onMount(() => {
     loadAtlas();
@@ -55,13 +56,13 @@
         .at(-1);
       selectedVisitId = selectedVisitId ?? newestVisit?.id ?? null;
     } catch (fetchError) {
-      error = fetchError.message;
+      error = fetchError instanceof Error ? fetchError.message : '请求失败';
     } finally {
       loading = false;
     }
   }
 
-  function selectTrip(id) {
+  function selectTrip(id: number | 'all') {
     selectedTripId = id;
     const nextVisit =
       id === 'all'
@@ -70,7 +71,7 @@
     selectedVisitId = nextVisit?.id ?? null;
   }
 
-  function selectVisit(id) {
+  function selectVisit(id: number) {
     selectedVisitId = id;
   }
 
@@ -80,7 +81,7 @@
     editorOpen = true;
   }
 
-  function openEdit(visit) {
+  function openEdit(visit: Visit) {
     editorMode = 'edit';
     editingVisit = visit;
     editorOpen = true;
@@ -90,7 +91,7 @@
     editorOpen = false;
   }
 
-  function flash(message) {
+  function flash(message: string) {
     notice = message;
     clearTimeout(noticeTimer);
     noticeTimer = setTimeout(() => {
@@ -98,7 +99,7 @@
     }, 2600);
   }
 
-  function handleSaved(result) {
+  function handleSaved(result: VisitMutationResult) {
     atlas = result.atlas;
     selectedVisitId = result.visitId;
     selectedTripId = 'all';
@@ -106,7 +107,7 @@
     flash('旅行节点已保存');
   }
 
-  async function handleDelete(visit) {
+  async function handleDelete(visit: Visit) {
     if (!visit) return;
     const confirmed = confirm(`删除 ${visit.location.name} 这条旅行记录？`);
     if (!confirmed) return;
@@ -118,7 +119,7 @@
       selectedVisitId = nextVisit?.id ?? null;
       flash('旅行节点已删除');
     } catch (deleteError) {
-      flash(deleteError.message);
+      flash(deleteError instanceof Error ? deleteError.message : '删除失败');
     }
   }
 </script>

@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import {
     CalendarDays,
     MapPin,
@@ -11,13 +11,21 @@
     Utensils
   } from '@lucide/svelte';
   import { formatDate, ratingText, splitTags, transportLabel } from '$lib/format';
+  import type { AtlasStats, Trip, Visit } from '$lib/types';
 
-  export let visit = null;
-  export let trip = null;
-  export let trips = [];
-  export let stats = {};
-  export let onEdit = () => {};
-  export let onDelete = () => {};
+  export let visit: Visit | null = null;
+  export let trip: Trip | null = null;
+  export let trips: Trip[] = [];
+  export let stats: AtlasStats = {
+    tripCount: 0,
+    visitCount: 0,
+    countryCount: 0,
+    averageRating: 0,
+    startYear: null,
+    endYear: null
+  };
+  export let onEdit: (visit: Visit) => void = () => {};
+  export let onDelete: (visit: Visit) => void = () => {};
 
   $: tags = splitTags(visit?.tags);
   $: countries = [
