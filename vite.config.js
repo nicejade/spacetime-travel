@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [svelte(), tailwindcss()],
   resolve: {
     alias: {
-      $lib: fileURLToPath(new URL('./src/lib', import.meta.url))
+      $lib: fileURLToPath(new URL('./client/lib', import.meta.url))
     }
   },
   server: {

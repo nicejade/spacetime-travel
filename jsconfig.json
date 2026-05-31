@@ -7,8 +7,8 @@
     "allowJs": true,
     "baseUrl": ".",
     "paths": {
-      "$lib/*": ["src/lib/*"]
+      "$lib/*": ["client/lib/*"]
     }
   },
-  "include": ["src/**/*.js", "src/**/*.svelte", "server/**/*.js"]
+  "include": ["client/**/*.js", "client/**/*.svelte", "server/**/*.js"]
 }

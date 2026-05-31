@@ -105,7 +105,7 @@ Starts the Express API. If `dist/` exists, the server also serves the production
 ├── server/
 │   ├── db.js          # SQLite schema, seed data, queries, and mutations
 │   └── index.js       # Express API and production static server
-├── src/
+├── client/
 │   ├── App.svelte     # Main app shell and state orchestration
 │   ├── app.css        # Global visual system and shared controls
 │   ├── components/

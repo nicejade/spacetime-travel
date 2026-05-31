@@ -99,7 +99,7 @@ Latest automated toolbar check result:
 
 ## Implementation Notes
 
-- Main canvas code lives in `src/components/TravelCanvas.svelte`.
+- Main canvas code lives in `client/components/TravelCanvas.svelte`.
 - API and database logic live in `server/db.js` and `server/index.js`.
 - The runtime database is `data/spacetime-travel.sqlite` and is ignored by Git.
 - `pnpm-workspace.yaml` allows native build scripts for `better-sqlite3` and `esbuild`.
