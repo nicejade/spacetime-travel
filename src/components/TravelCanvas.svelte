@@ -31,6 +31,8 @@
   let playing = false;
   let playTimer;
   let playbackIndex = 0;
+  let controlStatus = 'Ready';
+  let statusTimer;
 
   $: plottedTrips = trips.map((trip) => ({
     ...trip,
@@ -42,6 +44,7 @@
   $: plottedVisits = plottedTrips
     .flatMap((trip) => trip.visits.map((visit) => ({ ...visit, trip })))
     .sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt));
+  $: zoomLabel = `${Math.round(scale * 100)}%`;
 
   onMount(() => {
     const resizeObserver = new ResizeObserver(([entry]) => {
@@ -59,6 +62,7 @@
 
   onDestroy(() => {
     stopPlayback();
+    clearTimeout(statusTimer);
   });
 
   function clamp(value, min, max) {
@@ -72,6 +76,7 @@
       x: (viewportWidth - mapWidth * nextScale) / 2,
       y: (viewportHeight - mapHeight * nextScale) / 2
     };
+    setControlStatus('View reset');
   }
 
   function zoomAt(factor, clientX = viewportWidth / 2, clientY = viewportHeight / 2) {
@@ -83,6 +88,7 @@
       x: clientX - worldX * nextScale,
       y: clientY - worldY * nextScale
     };
+    setControlStatus(`Zoom ${Math.round(nextScale * 100)}%`);
   }
 
   function handleWheel(event) {
@@ -92,6 +98,7 @@
   }
 
   function startPan(event) {
+    if (event.target instanceof Element && event.target.closest('.canvas-controls')) return;
     if (event.button !== 0) return;
     dragging = true;
     lastPointer = { x: event.clientX, y: event.clientY };
@@ -146,15 +153,19 @@
   function selectNode(visit) {
     onSelectVisit(visit.id);
     focusVisit(visit);
+    setControlStatus(`${visit.location.name} focused`);
   }
 
   function startPlayback() {
     if (playing || plottedVisits.length === 0) return;
     playing = true;
-    playbackIndex = Math.max(
-      0,
-      plottedVisits.findIndex((visit) => visit.id === selectedVisitId)
-    );
+    const selectedIndex = plottedVisits.findIndex((visit) => visit.id === selectedVisitId);
+    playbackIndex = selectedIndex >= 0 ? selectedIndex + 1 : 0;
+    const firstVisit = plottedVisits[playbackIndex % plottedVisits.length];
+    onSelectVisit(firstVisit.id);
+    focusVisit(firstVisit, 0.92);
+    playbackIndex += 1;
+    setControlStatus('Playing route');
 
     playTimer = setInterval(() => {
       const visit = plottedVisits[playbackIndex % plottedVisits.length];
@@ -167,6 +178,33 @@
   function stopPlayback() {
     playing = false;
     clearInterval(playTimer);
+    setControlStatus('Playback paused');
+  }
+
+  function togglePlayback() {
+    if (playing) {
+      stopPlayback();
+    } else {
+      startPlayback();
+    }
+  }
+
+  function handleCreate() {
+    stopPlayback();
+    onCreate();
+    setControlStatus('New visit');
+  }
+
+  function stopControlEvent(event) {
+    event.stopPropagation();
+  }
+
+  function setControlStatus(message) {
+    controlStatus = message;
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => {
+      controlStatus = 'Ready';
+    }, 1800);
   }
 </script>
 
@@ -255,22 +293,50 @@
     </g>
   </svg>
 
-  <div class="canvas-controls glass-panel" aria-label="画布控制">
-    <button type="button" class="icon-button" aria-label="放大" title="放大" on:click={() => zoomAt(1.16)}>
+  <div
+    class="canvas-controls glass-panel"
+    role="group"
+    aria-label="画布控制"
+    on:pointerdown={stopControlEvent}
+    on:pointermove={stopControlEvent}
+    on:pointerup={stopControlEvent}
+    on:pointercancel={stopControlEvent}
+    on:wheel|preventDefault={stopControlEvent}
+  >
+    <button
+      type="button"
+      class="icon-button"
+      aria-label="放大"
+      title="放大"
+      on:click|stopPropagation={() => zoomAt(1.16)}
+    >
       <ZoomIn size={18} />
     </button>
-    <button type="button" class="icon-button" aria-label="缩小" title="缩小" on:click={() => zoomAt(0.86)}>
+    <button
+      type="button"
+      class="icon-button"
+      aria-label="缩小"
+      title="缩小"
+      on:click|stopPropagation={() => zoomAt(0.86)}
+    >
       <ZoomOut size={18} />
     </button>
-    <button type="button" class="icon-button" aria-label="重置视图" title="重置" on:click={fitWorld}>
+    <button
+      type="button"
+      class="icon-button"
+      aria-label="重置视图"
+      title="重置"
+      on:click|stopPropagation={fitWorld}
+    >
       <RotateCcw size={18} />
     </button>
     <button
       type="button"
       class="icon-button"
       aria-label={playing ? '暂停播放' : '播放轨迹'}
+      aria-pressed={playing}
       title={playing ? '暂停' : '播放'}
-      on:click={playing ? stopPlayback : startPlayback}
+      on:click|stopPropagation={togglePlayback}
     >
       {#if playing}
         <Pause size={18} />
@@ -278,9 +344,17 @@
         <Play size={18} />
       {/if}
     </button>
-    <button type="button" class="icon-button accent" aria-label="新增旅行节点" title="新增" on:click={onCreate}>
+    <button
+      type="button"
+      class="icon-button accent"
+      aria-label="新增旅行节点"
+      title="新增"
+      on:click|stopPropagation={handleCreate}
+    >
       <Plus size={18} />
     </button>
+    <output class="control-readout" aria-live="polite">{zoomLabel}</output>
+    <span class="sr-only" aria-live="polite">{controlStatus}</span>
   </div>
 </section>
 
@@ -377,15 +451,42 @@
     top: 20px;
     left: 50%;
     display: flex;
+    align-items: center;
     gap: 8px;
     border-radius: 999px;
     padding: 8px;
     transform: translateX(-50%);
+    cursor: default;
+    touch-action: manipulation;
   }
 
   .canvas-controls .accent {
     background: #235f73;
     color: #fff;
+  }
+
+  .control-readout {
+    display: inline-grid;
+    min-width: 56px;
+    min-height: 44px;
+    place-items: center;
+    border: 1px solid rgba(31, 54, 63, 0.1);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.62);
+    color: #263c45;
+    font-size: 13px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   @media (max-width: 980px) {
