@@ -3,10 +3,6 @@ export interface HttpError extends Error {
 }
 
 export interface VisitPayloadInput {
-  tripId?: number | 'new' | string;
-  newTripTitle?: string;
-  newTripSubtitle?: string;
-  tripColor?: string;
   locationName?: string;
   country?: string;
   lat?: number | string;
@@ -25,10 +21,6 @@ export interface VisitPayloadInput {
 }
 
 export interface ParsedVisitPayload {
-  tripId: number | 'new' | null;
-  newTripTitle: string;
-  newTripSubtitle: string;
-  tripColor: string;
   locationName: string;
   country: string;
   lat: number;

@@ -11,7 +11,6 @@ export interface Location {
 
 export interface Visit {
   id: number;
-  tripId: number;
   arrivedAt: string;
   departedAt: string | null;
   feeling: string;
@@ -29,7 +28,6 @@ export interface Visit {
 
 export interface Leg {
   id: number;
-  tripId: number;
   fromVisitId: number;
   toVisitId: number;
   transport: string;
@@ -39,20 +37,7 @@ export interface Leg {
   sequence: number;
 }
 
-export interface Trip {
-  id: number;
-  title: string;
-  subtitle: string;
-  startedAt: string | null;
-  endedAt: string | null;
-  color: string;
-  notes: string;
-  visits: Visit[];
-  legs: Leg[];
-}
-
 export interface AtlasStats {
-  tripCount: number;
   visitCount: number;
   countryCount: number;
   averageRating: number;
@@ -61,15 +46,14 @@ export interface AtlasStats {
 }
 
 export interface Atlas {
-  trips: Trip[];
+  visits: Visit[];
+  legs: Leg[];
+  years: number[];
+  yearColors: Record<string, string>;
   stats: AtlasStats;
 }
 
 export interface VisitPayload {
-  tripId: number | 'new';
-  newTripTitle?: string;
-  newTripSubtitle?: string;
-  tripColor?: string;
   locationName: string;
   country: string;
   lat: number | string;
@@ -90,7 +74,6 @@ export interface VisitPayload {
 export interface VisitMutationResult {
   ok: boolean;
   visitId: number;
-  tripId: number;
   atlas: Atlas;
 }
 
