@@ -3,12 +3,10 @@
   import LocationPicker from './LocationPicker.svelte';
   import { createVisit, updateVisit } from '$lib/api';
   import { transports } from '$lib/format';
-  import type { Trip, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
+  import type { Visit, VisitMutationResult, VisitPayload } from '$lib/types';
 
   export let mode: 'create' | 'edit' = 'create';
-  export let trips: Trip[] = [];
   export let visit: Visit | null = null;
-  export let trip: Trip | null = null;
   export let onClose: () => void = () => {};
   export let onSaved: (result: VisitMutationResult) => void = () => {};
 
@@ -17,7 +15,7 @@
   let lastKey = '';
   let values: VisitPayload = buildValues();
 
-  $: key = `${mode}:${visit?.id ?? 'new'}:${trips.length}`;
+  $: key = `${mode}:${visit?.id ?? 'new'}`;
   $: if (key !== lastKey) {
     values = buildValues();
     error = '';
@@ -27,13 +25,12 @@
   function buildValues(): VisitPayload {
     if (mode === 'edit' && visit) {
       return {
-        tripId: visit.tripId,
         locationName: visit.location.name,
         country: visit.location.country,
         lat: visit.location.lat,
         lng: visit.location.lng,
         arrivedAt: visit.arrivedAt,
-        departedAt: visit.departedAt,
+        departedAt: visit.departedAt || '',
         transport: visit.transport || 'flight',
         legNote: visit.legNote || '',
         feeling: visit.feeling || '',
@@ -42,15 +39,11 @@
         mood: visit.mood || '',
         weather: visit.weather || '',
         memory: visit.memory || '',
-        tags: visit.tags || '',
-        newTripTitle: '',
-        newTripSubtitle: '',
-        tripColor: trip?.color || '#2d7c89'
+        tags: visit.tags || ''
       };
     }
 
     return {
-      tripId: trips[0]?.id ?? 'new',
       locationName: '',
       country: '',
       lat: '',
@@ -65,10 +58,7 @@
       mood: '',
       weather: '',
       memory: '',
-      tags: '',
-      newTripTitle: '',
-      newTripSubtitle: '',
-      tripColor: '#2d7c89'
+      tags: ''
     };
   }
 
@@ -115,38 +105,6 @@
         <X size={18} />
       </button>
     </div>
-
-    {#if mode !== 'edit'}
-      <div class="field-row">
-        <label>
-          <span>旅行线</span>
-          <select class="select-field" bind:value={values.tripId}>
-            <option value="new">新旅行线</option>
-            {#each trips as item (item.id)}
-              <option value={item.id}>{item.title}</option>
-            {/each}
-          </select>
-        </label>
-
-        {#if values.tripId === 'new'}
-          <label>
-            <span>颜色</span>
-            <input class="field color-field" type="color" bind:value={values.tripColor} />
-          </label>
-        {/if}
-      </div>
-
-      {#if values.tripId === 'new'}
-        <label>
-          <span>新旅行线名称</span>
-          <input class="field" name="newTripTitle" bind:value={values.newTripTitle} placeholder="例如：北境冬日线" />
-        </label>
-        <label>
-          <span>副标题</span>
-          <input class="field" name="newTripSubtitle" bind:value={values.newTripSubtitle} placeholder="一段短短的旅行注脚" />
-        </label>
-      {/if}
-    {/if}
 
     <div class="picker-block">
       <span class="picker-label">选择地点</span>
@@ -362,10 +320,6 @@
 
   .coord-row {
     padding-bottom: 10px;
-  }
-
-  .color-field {
-    padding: 5px 10px;
   }
 
   input[type='range'] {

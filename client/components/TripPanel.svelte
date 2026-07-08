@@ -11,13 +11,13 @@
     Utensils
   } from '@lucide/svelte';
   import { formatDate, ratingText, splitTags, transportLabel } from '$lib/format';
-  import type { AtlasStats, Trip, Visit } from '$lib/types';
+  import type { AtlasStats, Visit } from '$lib/types';
 
   export let visit: Visit | null = null;
-  export let trip: Trip | null = null;
-  export let trips: Trip[] = [];
+  export let year: number | null = null;
+  export let yearColor = '#2d7c89';
+  export let visits: Visit[] = [];
   export let stats: AtlasStats = {
-    tripCount: 0,
     visitCount: 0,
     countryCount: 0,
     averageRating: 0,
@@ -28,15 +28,13 @@
   export let onDelete: (visit: Visit) => void = () => {};
 
   $: tags = splitTags(visit?.tags);
-  $: countries = [
-    ...new Set(trips.flatMap((item) => item.visits.map((visitItem) => visitItem.location.country)))
-  ];
+  $: countries = [...new Set(visits.map((item) => item.location.country))];
 </script>
 
 <aside class="detail-panel glass-panel" aria-label="旅行节点详情">
-  {#if visit && trip}
-    <div class="panel-head" style={`--trip-color: ${trip.color}`}>
-      <span class="trip-chip">{trip.title}</span>
+  {#if visit && year !== null}
+    <div class="panel-head" style={`--trip-color: ${yearColor}`}>
+      <span class="trip-chip">{year}</span>
       <h2>{visit.location.name}</h2>
       <p>{visit.location.country}</p>
     </div>
@@ -122,7 +120,7 @@
     </div>
   {:else}
     <div class="empty-panel">
-      <span>{stats.tripCount ?? 0}</span>
+      <span>{stats.visitCount ?? 0}</span>
       <h2>旅行图谱</h2>
       <p>{stats.visitCount ?? 0} 个节点，{stats.countryCount ?? 0} 个地区，平均评分 {stats.averageRating ?? 0}</p>
       <div class="country-cloud">

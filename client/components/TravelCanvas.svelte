@@ -4,9 +4,12 @@
   import { geoGraticule } from 'd3-geo';
   import { formatMonth, transportClass, transportDash } from '$lib/format';
   import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator, projection } from '$lib/geo';
-  import type { Trip } from '$lib/types';
+  import type { Leg, Visit } from '$lib/types';
+  import { visitYear } from '$lib/years';
 
-  export let trips: Trip[] = [];
+  export let visits: Visit[] = [];
+  export let legs: Leg[] = [];
+  export let yearColors: Record<string, string> = {};
   export let selectedVisitId: number | null = null;
   export let onSelectVisit: (id: number) => void = () => {};
   export let onCreate: () => void = () => {};
@@ -31,16 +34,19 @@
   let controlStatus = 'Ready';
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
 
-  $: plottedTrips = trips.map((trip) => ({
-    ...trip,
-    visits: trip.visits.map((visit) => {
+  $: plottedVisits = visits
+    .map((visit) => {
       const [x, y] = projection([visit.location.lng, visit.location.lat]) ?? [0, 0];
-      return { ...visit, x, y, tripColor: trip.color, tripTitle: trip.title };
+      const year = visitYear(visit.arrivedAt);
+      return {
+        ...visit,
+        x,
+        y,
+        yearColor: yearColors[String(year)] || '#2d7c89'
+      };
     })
-  }));
-  $: plottedVisits = plottedTrips
-    .flatMap((trip) => trip.visits.map((visit) => ({ ...visit, trip })))
     .sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt));
+  $: plottedById = new Map(plottedVisits.map((visit) => [visit.id, visit]));
   $: zoomLabel = `${Math.round(scale * 100)}%`;
 
   onMount(() => {
@@ -118,13 +124,9 @@
     }
   }
 
-  function getVisitPoint(trip, visitId) {
-    return trip.visits.find((visit) => visit.id === visitId);
-  }
-
-  function routePath(trip, leg, index) {
-    const from = getVisitPoint(trip, leg.fromVisitId);
-    const to = getVisitPoint(trip, leg.toVisitId);
+  function routePath(leg: Leg, index: number) {
+    const from = plottedById.get(leg.fromVisitId);
+    const to = plottedById.get(leg.toVisitId);
 
     if (!from || !to) return '';
 
@@ -137,6 +139,11 @@
     const controlY = (from.y + to.y) / 2 + (dx / distance) * curve * direction;
 
     return `M ${from.x.toFixed(2)} ${from.y.toFixed(2)} Q ${controlX.toFixed(2)} ${controlY.toFixed(2)} ${to.x.toFixed(2)} ${to.y.toFixed(2)}`;
+  }
+
+  function legColor(leg: Leg) {
+    const to = plottedById.get(leg.toVisitId);
+    return to?.yearColor || '#2d7c89';
   }
 
   function focusVisit(visit, targetScale = Math.max(scale, 0.86)) {
@@ -248,43 +255,39 @@
         <path class="country" d={pathGenerator(country)} />
       {/each}
 
-      {#each plottedTrips as trip (trip.id)}
-        <g class="trip-routes" style={`--trip-color: ${trip.color}`}>
-          {#each trip.legs as leg, index (leg.id)}
-            <path
-              class={`route-line ${transportClass(leg.transport)}`}
-              d={routePath(trip, leg, index)}
-              stroke-dasharray={transportDash(leg.transport)}
-              marker-end="url(#route-arrow)"
-            />
-          {/each}
-        </g>
-      {/each}
+      <g class="trip-routes">
+        {#each legs as leg, index (leg.id)}
+          <path
+            class={`route-line ${transportClass(leg.transport)}`}
+            style={`--trip-color: ${legColor(leg)}; stroke: var(--trip-color)`}
+            d={routePath(leg, index)}
+            stroke-dasharray={transportDash(leg.transport)}
+            marker-end="url(#route-arrow)"
+          />
+        {/each}
+      </g>
 
-      {#each plottedTrips as trip (trip.id)}
-        <g class="trip-nodes" style={`--trip-color: ${trip.color}`}>
-          {#each trip.visits as visit (visit.id)}
-            <g
-              class:selected={visit.id === selectedVisitId}
-              class="visit-node"
-              role="button"
-              tabindex="0"
-              aria-label={`${visit.location.name}，${formatMonth(visit.arrivedAt)}`}
-              transform={`translate(${visit.x} ${visit.y})`}
-              on:pointerdown|stopPropagation
-              on:click|stopPropagation={() => selectNode(visit)}
-              on:keydown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') selectNode(visit);
-              }}
-            >
-              <circle class="node-aura" r={18 + visit.rating * 3.8} />
-              <circle class="node-core" r={5 + visit.rating * 1.6} />
-              <text class="node-label" x="18" y="-13">
-                <tspan class="node-date">{formatMonth(visit.arrivedAt)}</tspan>
-                <tspan x="18" dy="17">{visit.location.name}</tspan>
-              </text>
-            </g>
-          {/each}
+      {#each plottedVisits as visit (visit.id)}
+        <g
+          class:selected={visit.id === selectedVisitId}
+          class="visit-node"
+          style={`--trip-color: ${visit.yearColor}`}
+          role="button"
+          tabindex="0"
+          aria-label={`${visit.location.name}，${formatMonth(visit.arrivedAt)}`}
+          transform={`translate(${visit.x} ${visit.y})`}
+          on:pointerdown|stopPropagation
+          on:click|stopPropagation={() => selectNode(visit)}
+          on:keydown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') selectNode(visit);
+          }}
+        >
+          <circle class="node-aura" r={18 + visit.rating * 3.8} />
+          <circle class="node-core" r={5 + visit.rating * 1.6} />
+          <text class="node-label" x="18" y="-13">
+            <tspan class="node-date">{formatMonth(visit.arrivedAt)}</tspan>
+            <tspan x="18" dy="17">{visit.location.name}</tspan>
+          </text>
         </g>
       {/each}
     </g>

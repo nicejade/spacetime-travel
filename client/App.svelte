@@ -6,13 +6,14 @@
   import TripPanel from './components/TripPanel.svelte';
   import VisitForm from './components/VisitForm.svelte';
   import { deleteVisit, fetchAtlas } from '$lib/api';
-  import type { Atlas, Visit, VisitMutationResult } from '$lib/types';
+  import type { Atlas, AtlasStats, Visit, VisitMutationResult } from '$lib/types';
+  import { visitYear } from '$lib/years';
 
   let atlas: Atlas | null = null;
   let loading = true;
   let error = '';
   let notice = '';
-  let selectedTripId: number | 'all' = 'all';
+  let selectedYear: number | 'all' = 'all';
   let selectedVisitId: number | null = null;
   let editorOpen = false;
   let editorMode: 'create' | 'edit' = 'create';
@@ -24,20 +25,31 @@
     return () => clearTimeout(noticeTimer);
   });
 
-  $: trips = atlas?.trips ?? [];
-  $: stats = atlas?.stats ?? {};
-  $: allVisits = trips
-    .flatMap((trip) => trip.visits.map((visit) => ({ ...visit, trip })))
-    .sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt));
-  $: visibleTrips =
-    selectedTripId === 'all'
-      ? trips
-      : trips.filter((trip) => String(trip.id) === String(selectedTripId));
-  $: visibleVisits = visibleTrips
-    .flatMap((trip) => trip.visits.map((visit) => ({ ...visit, trip })))
-    .sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt));
-  $: selectedVisit = allVisits.find((visit) => visit.id === selectedVisitId) ?? visibleVisits.at(-1) ?? null;
-  $: selectedTrip = selectedVisit ? trips.find((trip) => trip.id === selectedVisit.tripId) : null;
+  $: visits = atlas?.visits ?? [];
+  $: legs = atlas?.legs ?? [];
+  $: years = atlas?.years ?? [];
+  $: yearColors = atlas?.yearColors ?? {};
+  $: stats = (atlas?.stats ?? {
+    visitCount: 0,
+    countryCount: 0,
+    averageRating: 0,
+    startYear: null,
+    endYear: null
+  }) as AtlasStats;
+  $: visibleVisits =
+    selectedYear === 'all'
+      ? visits
+      : visits.filter((visit) => visitYear(visit.arrivedAt) === selectedYear);
+  $: visibleVisitIds = new Set(visibleVisits.map((visit) => visit.id));
+  $: visibleLegs =
+    selectedYear === 'all'
+      ? legs
+      : legs.filter((leg) => visibleVisitIds.has(leg.fromVisitId) && visibleVisitIds.has(leg.toVisitId));
+  $: selectedVisit =
+    visits.find((visit) => visit.id === selectedVisitId) ?? visibleVisits.at(-1) ?? null;
+  $: selectedVisitYear = selectedVisit ? visitYear(selectedVisit.arrivedAt) : null;
+  $: selectedYearColor =
+    selectedVisitYear !== null ? yearColors[String(selectedVisitYear)] || '#2d7c89' : '#2d7c89';
   $: dateSpan = stats.startYear
     ? stats.startYear === stats.endYear
       ? `${stats.startYear}`
@@ -50,10 +62,7 @@
 
     try {
       atlas = await fetchAtlas();
-      const newestVisit = atlas.trips
-        .flatMap((trip) => trip.visits)
-        .sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt))
-        .at(-1);
+      const newestVisit = [...atlas.visits].sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt)).at(-1);
       selectedVisitId = selectedVisitId ?? newestVisit?.id ?? null;
     } catch (fetchError) {
       error = fetchError instanceof Error ? fetchError.message : '请求失败';
@@ -62,13 +71,11 @@
     }
   }
 
-  function selectTrip(id: number | 'all') {
-    selectedTripId = id;
-    const nextVisit =
-      id === 'all'
-        ? allVisits.at(-1)
-        : trips.find((trip) => String(trip.id) === String(id))?.visits.at(-1);
-    selectedVisitId = nextVisit?.id ?? null;
+  function selectYear(year: number | 'all') {
+    selectedYear = year;
+    const pool =
+      year === 'all' ? visits : visits.filter((visit) => visitYear(visit.arrivedAt) === year);
+    selectedVisitId = pool.at(-1)?.id ?? null;
   }
 
   function selectVisit(id: number) {
@@ -102,7 +109,7 @@
   function handleSaved(result: VisitMutationResult) {
     atlas = result.atlas;
     selectedVisitId = result.visitId;
-    selectedTripId = 'all';
+    selectedYear = 'all';
     editorOpen = false;
     flash('旅行节点已保存');
   }
@@ -115,8 +122,7 @@
     try {
       const result = await deleteVisit(visit.id);
       atlas = result.atlas;
-      const nextVisit = atlas.trips.flatMap((trip) => trip.visits).at(-1);
-      selectedVisitId = nextVisit?.id ?? null;
+      selectedVisitId = atlas.visits.at(-1)?.id ?? null;
       flash('旅行节点已删除');
     } catch (deleteError) {
       flash(deleteError instanceof Error ? deleteError.message : '删除失败');
@@ -126,7 +132,9 @@
 
 <main class="app-shell">
   <TravelCanvas
-    trips={visibleTrips}
+    visits={visibleVisits}
+    legs={visibleLegs}
+    yearColors={yearColors}
     selectedVisitId={selectedVisit?.id ?? null}
     onSelectVisit={selectVisit}
     onCreate={openCreate}
@@ -166,22 +174,18 @@
       </div>
     </div>
 
-    <div class="trip-filter" aria-label="旅行线筛选">
-      <button
-        type="button"
-        class:active={selectedTripId === 'all'}
-        on:click={() => selectTrip('all')}
-      >
-        全部轨迹
+    <div class="trip-filter" aria-label="年份筛选">
+      <button type="button" class:active={selectedYear === 'all'} on:click={() => selectYear('all')}>
+        所有年份
       </button>
-      {#each trips as trip (trip.id)}
+      {#each years as year (year)}
         <button
           type="button"
-          style={`--trip-color: ${trip.color}`}
-          class:active={String(selectedTripId) === String(trip.id)}
-          on:click={() => selectTrip(trip.id)}
+          style={`--trip-color: ${yearColors[String(year)] || '#2d7c89'}`}
+          class:active={selectedYear === year}
+          on:click={() => selectYear(year)}
         >
-          <span></span>{trip.title}
+          <span></span>{year}
         </button>
       {/each}
     </div>
@@ -206,24 +210,23 @@
 
   <TripPanel
     visit={selectedVisit}
-    trip={selectedTrip}
-    trips={trips}
+    year={selectedVisitYear}
+    yearColor={selectedYearColor}
+    visits={visits}
     stats={stats}
     onEdit={openEdit}
     onDelete={handleDelete}
   />
 
-  <TimelineStrip trips={visibleTrips} selectedVisitId={selectedVisit?.id ?? null} onSelectVisit={selectVisit} />
+  <TimelineStrip
+    visits={visibleVisits}
+    yearColors={yearColors}
+    selectedVisitId={selectedVisit?.id ?? null}
+    onSelectVisit={selectVisit}
+  />
 
   {#if editorOpen}
-    <VisitForm
-      mode={editorMode}
-      trips={trips}
-      visit={editingVisit}
-      trip={editingVisit ? trips.find((item) => item.id === editingVisit.tripId) : null}
-      onClose={closeEditor}
-      onSaved={handleSaved}
-    />
+    <VisitForm mode={editorMode} visit={editingVisit} onClose={closeEditor} onSaved={handleSaved} />
   {/if}
 </main>
 

@@ -1,22 +1,22 @@
 <script lang="ts">
   import { formatMonth, ratingText } from '$lib/format';
-  import type { Trip } from '$lib/types';
+  import type { Visit } from '$lib/types';
+  import { visitYear } from '$lib/years';
 
-  export let trips: Trip[] = [];
+  export let visits: Visit[] = [];
+  export let yearColors: Record<string, string> = {};
   export let selectedVisitId: number | null = null;
   export let onSelectVisit: (id: number) => void = () => {};
 
-  $: visits = trips
-    .flatMap((trip) => trip.visits.map((visit) => ({ ...visit, trip })))
-    .sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt));
+  $: ordered = [...visits].sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt));
 </script>
 
 <nav class="timeline glass-panel" aria-label="旅行时间轴">
-  {#each visits as visit (visit.id)}
+  {#each ordered as visit (visit.id)}
     <button
       type="button"
       class:active={visit.id === selectedVisitId}
-      style={`--trip-color: ${visit.trip.color}`}
+      style={`--trip-color: ${yearColors[String(visitYear(visit.arrivedAt))] || '#2d7c89'}`}
       aria-label={`${visit.location.name}，${formatMonth(visit.arrivedAt)}`}
       on:click={() => onSelectVisit(visit.id)}
     >
