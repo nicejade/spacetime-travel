@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "start": "tsx server/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:gazetteer": "node scripts/build-gazetteer.mjs"
   },
   "dependencies": {
     "@lucide/svelte": "^1.17.0",

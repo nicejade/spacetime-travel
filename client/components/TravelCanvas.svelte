@@ -1,10 +1,9 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { Pause, Play, Plus, RotateCcw, ZoomIn, ZoomOut } from '@lucide/svelte';
-  import { geoEquirectangular, geoGraticule, geoPath } from 'd3-geo';
-  import { feature } from 'topojson-client';
-  import countries110m from 'world-atlas/countries-110m.json';
+  import { geoGraticule } from 'd3-geo';
   import { formatMonth, transportClass, transportDash } from '$lib/format';
+  import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator, projection } from '$lib/geo';
   import type { Trip } from '$lib/types';
 
   export let trips: Trip[] = [];
@@ -12,14 +11,8 @@
   export let onSelectVisit: (id: number) => void = () => {};
   export let onCreate: () => void = () => {};
 
-  const mapWidth = 2400;
-  const mapHeight = 1200;
-  const projection = geoEquirectangular().fitSize([mapWidth, mapHeight], { type: 'Sphere' });
-  const pathGenerator = geoPath(projection);
-  const countryFeatures = feature(
-    countries110m as Parameters<typeof feature>[0],
-    countries110m.objects.countries
-  ).features;
+  const mapWidth = MAP_WIDTH;
+  const mapHeight = MAP_HEIGHT;
   const graticule = geoGraticule().step([30, 30]);
   const graticulePath = pathGenerator(graticule());
   const spherePath = pathGenerator({ type: 'Sphere' });

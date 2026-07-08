@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Save, X } from '@lucide/svelte';
+  import LocationPicker from './LocationPicker.svelte';
   import { createVisit, updateVisit } from '$lib/api';
   import { transports } from '$lib/format';
   import type { Trip, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
@@ -86,6 +87,16 @@
     }
   }
 
+  function handlePick(place: { name?: string; country?: string; lat: number; lng: number }) {
+    // Search hits also carry a name; map clicks only carry country + coordinates,
+    // so we never overwrite a name the user already typed.
+    if (place.name) values.locationName = place.name;
+    if (place.country) values.country = place.country;
+    values.lat = place.lat;
+    values.lng = place.lng;
+    values = values;
+  }
+
   function handleBackdropClick(event) {
     if (event.target === event.currentTarget) {
       onClose();
@@ -137,6 +148,17 @@
       {/if}
     {/if}
 
+    <div class="picker-block">
+      <span class="picker-label">选择地点</span>
+      <LocationPicker
+        name={values.locationName}
+        country={values.country}
+        lat={values.lat}
+        lng={values.lng}
+        onPick={handlePick}
+      />
+    </div>
+
     <div class="field-row">
       <label>
         <span>地点</span>
@@ -148,16 +170,19 @@
       </label>
     </div>
 
-    <div class="field-row">
-      <label>
-        <span>纬度</span>
-        <input class="field" required type="number" min="-90" max="90" step="0.0001" bind:value={values.lat} />
-      </label>
-      <label>
-        <span>经度</span>
-        <input class="field" required type="number" min="-180" max="180" step="0.0001" bind:value={values.lng} />
-      </label>
-    </div>
+    <details class="coord-details">
+      <summary>手动微调坐标</summary>
+      <div class="field-row coord-row">
+        <label>
+          <span>纬度</span>
+          <input class="field" required type="number" min="-90" max="90" step="0.0001" bind:value={values.lat} />
+        </label>
+        <label>
+          <span>经度</span>
+          <input class="field" required type="number" min="-180" max="180" step="0.0001" bind:value={values.lng} />
+        </label>
+      </div>
+    </details>
 
     <div class="field-row">
       <label>
@@ -292,6 +317,51 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+  }
+
+  .picker-block {
+    display: grid;
+    gap: 6px;
+  }
+
+  .picker-label {
+    color: #304751;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .coord-details {
+    border: 1px solid rgba(31, 54, 63, 0.11);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 4px 12px;
+  }
+
+  .coord-details summary {
+    padding: 8px 0;
+    color: #304751;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .coord-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .coord-details summary::before {
+    content: '▸';
+    margin-right: 6px;
+    color: #6a7f85;
+  }
+
+  .coord-details[open] summary::before {
+    content: '▾';
+  }
+
+  .coord-row {
+    padding-bottom: 10px;
   }
 
   .color-field {
