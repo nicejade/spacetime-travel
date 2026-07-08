@@ -154,28 +154,14 @@ button:disabled {
   transform: translateY(-1px);
 }
 
-.route-flight {
-  stroke: #dd6f5c;
-}
-
-.route-train {
-  stroke: #2d7c89;
-}
-
-.route-ferry {
-  stroke: #4c7fb3;
-}
-
-.route-drive {
-  stroke: #9c7a34;
-}
-
-.route-walk {
-  stroke: #6d8f58;
-}
-
+/* Transport classes only vary dash pattern via JS; stroke color is year-based. */
+.route-flight,
+.route-train,
+.route-ferry,
+.route-drive,
+.route-walk,
 .route-bus {
-  stroke: #6b7ba8;
+  stroke: var(--trip-color, #2d7c89);
 }
 
 @media (prefers-reduced-motion: reduce) {

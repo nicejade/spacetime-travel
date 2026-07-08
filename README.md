@@ -12,10 +12,10 @@ The app is designed around a spatial timeline: past journeys are plotted on an o
 - Directional route lines between visits.
 - Transport-aware route styles for flights, trains, ferries, drives, buses, and walking.
 - Rating-based node glow to make memorable stops stand out.
-- Trip filters, timeline strip, and detail panel.
-- Create, edit, and delete visit records.
+- Year filters (all years by default), timeline strip, and detail panel.
+- Create, edit, and delete visit records without naming a trip.
 - SQLite-backed local persistence.
-- Seed data for three demo journeys across Asia, Europe, Africa, and the Americas.
+- Seed data for demo visits across Asia, Europe, Africa, and the Americas spanning multiple years.
 
 ## Tech Stack
 
@@ -132,12 +132,15 @@ data/spacetime-travel.sqlite
 
 Core tables:
 
-- `trips`: named travel lines with colors and date ranges.
-- `locations`: reusable geographic points.
-- `visits`: travel memories attached to a trip and location.
-- `legs`: movement between visits, including transport mode and notes.
+- `locations`: geographic points.
+- `visits`: travel memories attached to a location, ordered globally by arrival date.
+- `legs`: movement between adjacent visits, including transport mode and notes.
 
-The database is seeded only when there are no trips.
+Years and year colors are derived from `arrived_at` at query time (not stored as entities).
+
+The database is seeded only when there are no visits.
+
+**Schema upgrades are not migrated.** After pulling a breaking change, delete `data/spacetime-travel.sqlite*` and restart so the app recreates and reseeds the database.
 
 ## API Overview
 
@@ -151,13 +154,13 @@ Health check.
 GET /api/atlas
 ```
 
-Returns trips, visits, legs, and aggregate stats.
+Returns visits, legs, years, yearColors, and aggregate stats.
 
 ```http
 POST /api/visits
 ```
 
-Creates a new visit and optionally a new trip.
+Creates a new visit and rebuilds the global sequence / adjacent legs.
 
 ```http
 PUT /api/visits/:id
@@ -169,7 +172,7 @@ Updates a visit and its location/inbound leg metadata.
 DELETE /api/visits/:id
 ```
 
-Deletes a visit and resequences the trip.
+Deletes a visit and rebuilds the global sequence / adjacent legs.
 
 ## Notes
 
