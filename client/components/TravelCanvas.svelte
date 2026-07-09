@@ -1,18 +1,26 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
-  import { Pause, Play, Plus, RotateCcw, ZoomIn, ZoomOut } from '@lucide/svelte';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { Play, Plus, RotateCcw, ZoomIn, ZoomOut } from '@lucide/svelte';
   import { geoGraticule } from 'd3-geo';
   import { formatMonth, transportClass, transportDash } from '$lib/format';
-  import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator, projection } from '$lib/geo';
+  import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator } from '$lib/geo';
+  import { buildRouteGeometry } from '$lib/movie/pathSampler';
+  import { plotVisits } from '$lib/movie/plotVisits';
+  import type { MovieFrameState } from '$lib/movie/types';
   import type { Leg, Visit } from '$lib/types';
-  import { visitYear } from '$lib/years';
 
   export let visits: Visit[] = [];
   export let legs: Leg[] = [];
   export let yearColors: Record<string, string> = {};
   export let selectedVisitId: number | null = null;
+  export let movieMode = false;
+  export let movieFrame: MovieFrameState | null = null;
+  export let movieActiveLeg: { fromVisitId: number; toVisitId: number } | null = null;
   export let onSelectVisit: (id: number) => void = () => {};
   export let onCreate: () => void = () => {};
+  export let onStartMovie: (viewport: { width: number; height: number }) => void = () => {};
+
+  const dispatch = createEventDispatcher<{ svgready: SVGSVGElement }>();
 
   const mapWidth = MAP_WIDTH;
   const mapHeight = MAP_HEIGHT;
@@ -21,6 +29,7 @@
   const spherePath = pathGenerator({ type: 'Sphere' });
 
   let shell: HTMLElement;
+  let worldStage: SVGSVGElement;
   let viewportWidth = 1280;
   let viewportHeight = 820;
   let pan = { x: 0, y: 0 };
@@ -28,26 +37,24 @@
   let hasFit = false;
   let dragging = false;
   let lastPointer = { x: 0, y: 0 };
-  let playing = false;
-  let playTimer: ReturnType<typeof setInterval> | undefined;
-  let playbackIndex = 0;
   let controlStatus = 'Ready';
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
 
-  $: plottedVisits = visits
-    .map((visit) => {
-      const [x, y] = projection([visit.location.lng, visit.location.lat]) ?? [0, 0];
-      const year = visitYear(visit.arrivedAt);
-      return {
-        ...visit,
-        x,
-        y,
-        yearColor: yearColors[String(year)] || '#2d7c89'
-      };
-    })
-    .sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt));
+  $: plottedVisits = plotVisits(visits, yearColors);
   $: plottedById = new Map(plottedVisits.map((visit) => [visit.id, visit]));
   $: zoomLabel = `${Math.round(scale * 100)}%`;
+  $: canStartMovie = plottedVisits.length > 0;
+  $: displayPan = movieMode && movieFrame ? movieFrame.camera.pan : pan;
+  $: displayScale = movieMode && movieFrame ? movieFrame.camera.scale : scale;
+  $: lightVisit = movieFrame ? plottedVisits[movieFrame.activeVisitIndex] : null;
+  $: lightColor = lightVisit?.yearColor || '#2d7c89';
+
+  $: if (movieMode && movieFrame) {
+    const visit = plottedVisits[movieFrame.activeVisitIndex];
+    if (visit && visit.id !== selectedVisitId) {
+      onSelectVisit(visit.id);
+    }
+  }
 
   onMount(() => {
     const resizeObserver = new ResizeObserver(([entry]) => {
@@ -60,11 +67,13 @@
     });
 
     resizeObserver.observe(shell);
+    if (worldStage) dispatch('svgready', worldStage);
     return () => resizeObserver.disconnect();
   });
 
+  $: if (worldStage) dispatch('svgready', worldStage);
+
   onDestroy(() => {
-    stopPlayback();
     clearTimeout(statusTimer);
   });
 
@@ -83,6 +92,7 @@
   }
 
   function zoomAt(factor: number, clientX = viewportWidth / 2, clientY = viewportHeight / 2) {
+    if (movieMode) return;
     const nextScale = clamp(scale * factor, 0.22, 4.6);
     const worldX = (clientX - pan.x) / scale;
     const worldY = (clientY - pan.y) / scale;
@@ -95,12 +105,14 @@
   }
 
   function handleWheel(event: WheelEvent) {
+    if (movieMode) return;
     event.preventDefault();
     const rect = shell.getBoundingClientRect();
     zoomAt(event.deltaY > 0 ? 0.9 : 1.12, event.clientX - rect.left, event.clientY - rect.top);
   }
 
   function startPan(event: PointerEvent) {
+    if (movieMode) return;
     if (event.target instanceof Element && event.target.closest('.canvas-controls')) return;
     if (event.button !== 0) return;
     dragging = true;
@@ -108,8 +120,8 @@
     shell.setPointerCapture(event.pointerId);
   }
 
-  function movePan(event) {
-    if (!dragging) return;
+  function movePan(event: PointerEvent) {
+    if (!dragging || movieMode) return;
     pan = {
       x: pan.x + event.clientX - lastPointer.x,
       y: pan.y + event.clientY - lastPointer.y
@@ -117,7 +129,7 @@
     lastPointer = { x: event.clientX, y: event.clientY };
   }
 
-  function endPan(event) {
+  function endPan(event: PointerEvent) {
     dragging = false;
     if (shell.hasPointerCapture(event.pointerId)) {
       shell.releasePointerCapture(event.pointerId);
@@ -127,18 +139,8 @@
   function routePath(leg: Leg, index: number) {
     const from = plottedById.get(leg.fromVisitId);
     const to = plottedById.get(leg.toVisitId);
-
     if (!from || !to) return '';
-
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const distance = Math.hypot(dx, dy) || 1;
-    const curve = clamp(distance * 0.16, 34, 150);
-    const direction = index % 2 === 0 ? 1 : -1;
-    const controlX = (from.x + to.x) / 2 + (-dy / distance) * curve * direction;
-    const controlY = (from.y + to.y) / 2 + (dx / distance) * curve * direction;
-
-    return `M ${from.x.toFixed(2)} ${from.y.toFixed(2)} Q ${controlX.toFixed(2)} ${controlY.toFixed(2)} ${to.x.toFixed(2)} ${to.y.toFixed(2)}`;
+    return buildRouteGeometry(from, to, index).d;
   }
 
   function legColor(leg: Leg) {
@@ -146,7 +148,12 @@
     return to?.yearColor || '#2d7c89';
   }
 
-  function focusVisit(visit, targetScale = Math.max(scale, 0.86)) {
+  function isActiveLeg(leg: Leg) {
+    if (!movieActiveLeg) return false;
+    return leg.fromVisitId === movieActiveLeg.fromVisitId && leg.toVisitId === movieActiveLeg.toVisitId;
+  }
+
+  function focusVisit(visit: (typeof plottedVisits)[number], targetScale = Math.max(scale, 0.86)) {
     scale = clamp(targetScale, 0.42, 2.6);
     pan = {
       x: viewportWidth / 2 - visit.x * scale,
@@ -154,56 +161,29 @@
     };
   }
 
-  function selectNode(visit) {
+  function selectNode(visit: (typeof plottedVisits)[number]) {
+    if (movieMode) return;
     onSelectVisit(visit.id);
     focusVisit(visit);
     setControlStatus(`${visit.location.name} focused`);
   }
 
-  function startPlayback() {
-    if (playing || plottedVisits.length === 0) return;
-    playing = true;
-    const selectedIndex = plottedVisits.findIndex((visit) => visit.id === selectedVisitId);
-    playbackIndex = selectedIndex >= 0 ? selectedIndex + 1 : 0;
-    const firstVisit = plottedVisits[playbackIndex % plottedVisits.length];
-    onSelectVisit(firstVisit.id);
-    focusVisit(firstVisit, 0.92);
-    playbackIndex += 1;
-    setControlStatus('Playing route');
-
-    playTimer = setInterval(() => {
-      const visit = plottedVisits[playbackIndex % plottedVisits.length];
-      onSelectVisit(visit.id);
-      focusVisit(visit, 0.92);
-      playbackIndex += 1;
-    }, 1300);
-  }
-
-  function stopPlayback() {
-    playing = false;
-    clearInterval(playTimer);
-    setControlStatus('Playback paused');
-  }
-
-  function togglePlayback() {
-    if (playing) {
-      stopPlayback();
-    } else {
-      startPlayback();
-    }
+  function startMovie() {
+    if (!canStartMovie || movieMode) return;
+    onStartMovie({ width: viewportWidth, height: viewportHeight });
+    setControlStatus('Movie mode');
   }
 
   function handleCreate() {
-    stopPlayback();
     onCreate();
     setControlStatus('New visit');
   }
 
-  function stopControlEvent(event) {
+  function stopControlEvent(event: Event) {
     event.stopPropagation();
   }
 
-  function setControlStatus(message) {
+  function setControlStatus(message: string) {
     controlStatus = message;
     clearTimeout(statusTimer);
     statusTimer = setTimeout(() => {
@@ -215,6 +195,7 @@
 <section
   bind:this={shell}
   class="canvas-shell"
+  class:movie-mode={movieMode}
   aria-label="旅行时空画布"
   on:wheel={handleWheel}
   on:pointerdown={startPan}
@@ -222,7 +203,13 @@
   on:pointerup={endPan}
   on:pointercancel={endPan}
 >
-  <svg class="world-stage" viewBox={`0 0 ${viewportWidth} ${viewportHeight}`} role="img" aria-label="世界平面地图与旅行轨迹">
+  <svg
+    bind:this={worldStage}
+    class="world-stage"
+    viewBox={`0 0 ${viewportWidth} ${viewportHeight}`}
+    role="img"
+    aria-label="世界平面地图与旅行轨迹"
+  >
     <defs>
       <pattern id="star-grid" width="88" height="88" patternUnits="userSpaceOnUse">
         <path d="M 88 0 L 0 0 0 88" fill="none" stroke="rgba(35, 95, 115, 0.08)" stroke-width="1" />
@@ -247,7 +234,7 @@
 
     <rect width={viewportWidth} height={viewportHeight} fill="url(#star-grid)" opacity="0.9" />
 
-    <g transform={`translate(${pan.x} ${pan.y}) scale(${scale})`}>
+    <g transform={`translate(${displayPan.x} ${displayPan.y}) scale(${displayScale})`}>
       <path class="sphere" d={spherePath} />
       <path class="graticule" d={graticulePath} />
 
@@ -258,7 +245,7 @@
       <g class="trip-routes">
         {#each legs as leg, index (leg.id)}
           <path
-            class={`route-line ${transportClass(leg.transport)}`}
+            class={`route-line ${transportClass(leg.transport)} ${movieMode ? (isActiveLeg(leg) ? 'route-active' : 'route-dimmed') : ''}`}
             style={`--trip-color: ${legColor(leg)}; stroke: var(--trip-color)`}
             d={routePath(leg, index)}
             stroke-dasharray={transportDash(leg.transport)}
@@ -284,78 +271,85 @@
         >
           <circle class="node-aura" r={18 + visit.rating * 3.8} />
           <circle class="node-core" r={5 + visit.rating * 1.6} />
-          <text class="node-label" x="18" y="-13">
-            <tspan class="node-date">{formatMonth(visit.arrivedAt)}</tspan>
-            <tspan x="18" dy="17">{visit.location.name}</tspan>
-          </text>
+          {#if !movieMode}
+            <text class="node-label" x="18" y="-13">
+              <tspan class="node-date">{formatMonth(visit.arrivedAt)}</tspan>
+              <tspan x="18" dy="17">{visit.location.name}</tspan>
+            </text>
+          {/if}
         </g>
       {/each}
+
+      {#if movieMode && movieFrame}
+        <g class="movie-light" transform={`translate(${movieFrame.lightPosition.x} ${movieFrame.lightPosition.y})`}>
+          <circle class="movie-light-aura" r="18" fill={lightColor} filter="url(#soft-glow)" />
+          <circle class="movie-light-core" r="8" />
+        </g>
+      {/if}
     </g>
   </svg>
 
-  <div
-    class="canvas-controls glass-panel"
-    role="group"
-    aria-label="画布控制"
-    on:pointerdown={stopControlEvent}
-    on:pointermove={stopControlEvent}
-    on:pointerup={stopControlEvent}
-    on:pointercancel={stopControlEvent}
-    on:wheel|preventDefault={stopControlEvent}
-  >
-    <button
-      type="button"
-      class="icon-button"
-      aria-label="放大"
-      title="放大"
-      on:click|stopPropagation={() => zoomAt(1.16)}
+  {#if !movieMode}
+    <div
+      class="canvas-controls glass-panel"
+      role="group"
+      aria-label="画布控制"
+      on:pointerdown={stopControlEvent}
+      on:pointermove={stopControlEvent}
+      on:pointerup={stopControlEvent}
+      on:pointercancel={stopControlEvent}
+      on:wheel|preventDefault={stopControlEvent}
     >
-      <ZoomIn size={18} />
-    </button>
-    <button
-      type="button"
-      class="icon-button"
-      aria-label="缩小"
-      title="缩小"
-      on:click|stopPropagation={() => zoomAt(0.86)}
-    >
-      <ZoomOut size={18} />
-    </button>
-    <button
-      type="button"
-      class="icon-button"
-      aria-label="重置视图"
-      title="重置"
-      on:click|stopPropagation={fitWorld}
-    >
-      <RotateCcw size={18} />
-    </button>
-    <button
-      type="button"
-      class="icon-button"
-      aria-label={playing ? '暂停播放' : '播放轨迹'}
-      aria-pressed={playing}
-      title={playing ? '暂停' : '播放'}
-      on:click|stopPropagation={togglePlayback}
-    >
-      {#if playing}
-        <Pause size={18} />
-      {:else}
+      <button
+        type="button"
+        class="icon-button"
+        aria-label="放大"
+        title="放大"
+        on:click|stopPropagation={() => zoomAt(1.16)}
+      >
+        <ZoomIn size={18} />
+      </button>
+      <button
+        type="button"
+        class="icon-button"
+        aria-label="缩小"
+        title="缩小"
+        on:click|stopPropagation={() => zoomAt(0.86)}
+      >
+        <ZoomOut size={18} />
+      </button>
+      <button
+        type="button"
+        class="icon-button"
+        aria-label="重置视图"
+        title="重置"
+        on:click|stopPropagation={fitWorld}
+      >
+        <RotateCcw size={18} />
+      </button>
+      <button
+        type="button"
+        class="icon-button"
+        aria-label="播放电影模式"
+        title="电影模式"
+        disabled={!canStartMovie}
+        on:click|stopPropagation={startMovie}
+      >
         <Play size={18} />
-      {/if}
-    </button>
-    <button
-      type="button"
-      class="icon-button accent"
-      aria-label="新增旅行节点"
-      title="新增"
-      on:click|stopPropagation={handleCreate}
-    >
-      <Plus size={18} />
-    </button>
-    <output class="control-readout" aria-live="polite">{zoomLabel}</output>
-    <span class="sr-only" aria-live="polite">{controlStatus}</span>
-  </div>
+      </button>
+      <button
+        type="button"
+        class="icon-button accent"
+        aria-label="新增旅行节点"
+        title="新增"
+        on:click|stopPropagation={handleCreate}
+      >
+        <Plus size={18} />
+      </button>
+      <output class="control-readout" aria-live="polite">{zoomLabel}</output>
+      <span class="sr-only" aria-live="polite">{controlStatus}</span>
+    </div>
+  {/if}
 </section>
 
 <style>
@@ -367,7 +361,11 @@
     touch-action: none;
   }
 
-  .canvas-shell:active {
+  .canvas-shell.movie-mode {
+    cursor: default;
+  }
+
+  .canvas-shell:active:not(.movie-mode) {
     cursor: grabbing;
   }
 
@@ -402,11 +400,25 @@
     opacity: 0.78;
     vector-effect: non-scaling-stroke;
     filter: drop-shadow(0 10px 14px rgba(24, 51, 60, 0.16));
+    transition: opacity 180ms ease, stroke-width 180ms ease;
+  }
+
+  .route-line.route-dimmed {
+    opacity: 0.25;
+  }
+
+  .route-line.route-active {
+    opacity: 1;
+    stroke-width: 5;
   }
 
   .visit-node {
     cursor: pointer;
     outline: none;
+  }
+
+  .canvas-shell.movie-mode .visit-node {
+    cursor: default;
   }
 
   .visit-node:focus-visible .node-aura,
@@ -443,6 +455,30 @@
     fill: #667a80;
     font-size: 12px;
     font-weight: 700;
+  }
+
+  .movie-light-aura {
+    opacity: 0.42;
+    animation: movie-pulse 1.8s ease-in-out infinite;
+  }
+
+  .movie-light-core {
+    fill: #fff;
+    stroke: rgba(255, 255, 255, 0.92);
+    stroke-width: 2;
+    filter: drop-shadow(0 8px 16px rgba(24, 44, 51, 0.28));
+  }
+
+  @keyframes movie-pulse {
+    0%,
+    100% {
+      opacity: 0.34;
+      r: 16;
+    }
+    50% {
+      opacity: 0.58;
+      r: 22;
+    }
   }
 
   .canvas-controls {

@@ -1,11 +1,23 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { CalendarDays, Globe, MapPinned, Plus, RefreshCw, Route, Star } from '@lucide/svelte';
+  import MovieOverlay from './components/MovieOverlay.svelte';
   import TimelineStrip from './components/TimelineStrip.svelte';
   import TravelCanvas from './components/TravelCanvas.svelte';
   import TripPanel from './components/TripPanel.svelte';
   import VisitForm from './components/VisitForm.svelte';
   import { deleteVisit, fetchAtlas } from '$lib/api';
+  import { formatMonth } from '$lib/format';
+  import {
+    MovieEngine,
+    buildExportFilename,
+    canExportVideo,
+    computeExportSize,
+    downloadBlob,
+    recordMovieVideo
+  } from '$lib/movie/engine';
+  import { plotVisits } from '$lib/movie/plotVisits';
+  import type { MovieFrameState } from '$lib/movie/types';
   import type { Atlas, AtlasStats, Visit, VisitMutationResult } from '$lib/types';
   import { visitYear } from '$lib/years';
 
@@ -19,10 +31,39 @@
   let editorMode: 'create' | 'edit' = 'create';
   let editingVisit: Visit | null = null;
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  let movieActive = false;
+  let moviePaused = false;
+  let movieComplete = false;
+  let movieEngine: MovieEngine | null = null;
+  let movieFrame: MovieFrameState | null = null;
+  let movieSvg: SVGSVGElement | null = null;
+  let movieRaf = 0;
+  let lastMovieTick = 0;
+  let movieExporting = false;
+  let movieExportProgress = 0;
+  let exportAbort: AbortController | null = null;
 
   onMount(() => {
     loadAtlas();
-    return () => clearTimeout(noticeTimer);
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (!movieActive || movieExporting) return;
+      if (event.key === ' ' || event.code === 'Space') {
+        event.preventDefault();
+        toggleMoviePause();
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        stopMovie();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeydown);
+    return () => {
+      clearTimeout(noticeTimer);
+      cancelAnimationFrame(movieRaf);
+      window.removeEventListener('keydown', handleKeydown);
+      exportAbort?.abort();
+    };
   });
 
   $: visits = atlas?.visits ?? [];
@@ -55,6 +96,19 @@
       ? `${stats.startYear}`
       : `${stats.startYear} - ${stats.endYear}`
     : '未开始';
+  $: plottedVisits = plotVisits(visibleVisits, yearColors);
+  $: movieActiveLeg =
+    movieFrame?.activeLegIndex != null && movieEngine
+      ? (() => {
+          const resolved = movieEngine.resolvedLegs[movieFrame.activeLegIndex ?? -1];
+          if (!resolved) return null;
+          const from = movieEngine.visits[resolved.fromIndex];
+          const to = movieEngine.visits[resolved.toIndex];
+          if (!from || !to) return null;
+          return { fromVisitId: from.id, toVisitId: to.id };
+        })()
+      : null;
+  $: movieCanExport = canExportVideo();
 
   async function loadAtlas() {
     loading = true;
@@ -114,6 +168,129 @@
     flash('旅行节点已保存');
   }
 
+  function startMovie(viewport: { width: number; height: number }) {
+    if (visibleVisits.length === 0) return;
+    movieEngine = new MovieEngine({
+      visits: plottedVisits,
+      legs: visibleLegs,
+      viewportWidth: viewport.width,
+      viewportHeight: viewport.height
+    });
+    movieActive = true;
+    moviePaused = false;
+    movieComplete = false;
+    movieFrame = movieEngine.setElapsedMs(0);
+    lastMovieTick = performance.now();
+    movieRaf = requestAnimationFrame(runMovieLoop);
+  }
+
+  function runMovieLoop(now = performance.now()) {
+    if (!movieActive || !movieEngine || moviePaused || movieExporting) return;
+
+    const delta = now - lastMovieTick;
+    lastMovieTick = now;
+    movieFrame = movieEngine.setElapsedMs(movieEngine.getElapsedMs() + delta);
+
+    if (movieEngine.isComplete()) {
+      moviePaused = true;
+      movieComplete = true;
+      return;
+    }
+
+    movieRaf = requestAnimationFrame(runMovieLoop);
+  }
+
+  function toggleMoviePause() {
+    if (!movieActive || movieExporting) return;
+    moviePaused = !moviePaused;
+    if (!moviePaused) {
+      lastMovieTick = performance.now();
+      movieRaf = requestAnimationFrame(runMovieLoop);
+    } else {
+      cancelAnimationFrame(movieRaf);
+    }
+  }
+
+  function seekMovie(progress: number) {
+    if (!movieEngine) return;
+    movieFrame = movieEngine.setElapsedMs(progress * movieEngine.totalDuration);
+    movieComplete = movieEngine.isComplete();
+    moviePaused = movieComplete;
+    if (!moviePaused && movieActive) {
+      lastMovieTick = performance.now();
+      cancelAnimationFrame(movieRaf);
+      movieRaf = requestAnimationFrame(runMovieLoop);
+    }
+  }
+
+  function stopMovie() {
+    if (movieExporting) {
+      exportAbort?.abort();
+      return;
+    }
+    movieActive = false;
+    moviePaused = false;
+    movieComplete = false;
+    movieFrame = null;
+    movieEngine = null;
+    cancelAnimationFrame(movieRaf);
+  }
+
+  async function exportMovie() {
+    if (!movieEngine || !movieSvg || movieExporting || !movieCanExport) return;
+
+    movieExporting = true;
+    movieExportProgress = 0;
+    moviePaused = true;
+    cancelAnimationFrame(movieRaf);
+    exportAbort = new AbortController();
+
+    const { width, height } = computeExportSize(movieSvg.clientWidth, movieSvg.clientHeight);
+
+    try {
+      const blob = await recordMovieVideo({
+        svg: movieSvg,
+        totalDuration: movieEngine.totalDuration,
+        width,
+        height,
+        signal: exportAbort.signal,
+        onFrame: async (elapsedMs) => {
+          movieFrame = movieEngine!.setElapsedMs(elapsedMs);
+          await tick();
+          const visit = plottedVisits[movieFrame.activeVisitIndex];
+          if (!visit || movieFrame.phase !== 'dwell') return { caption: null };
+          return {
+            caption: {
+              title: `${visit.location.name} · ${formatMonth(visit.arrivedAt)}`,
+              body: visit.feeling || '未记录感受',
+              opacity: movieFrame.dwellCaptionOpacity
+            }
+          };
+        },
+        onProgress: (progress) => {
+          movieExportProgress = progress;
+        }
+      });
+      downloadBlob(blob, buildExportFilename(plottedVisits, selectedYear));
+      flash('视频已导出');
+    } catch (exportError) {
+      if (exportError instanceof DOMException && exportError.name === 'AbortError') {
+        flash('已取消导出');
+      } else {
+        flash(exportError instanceof Error ? exportError.message : '导出失败，请重试');
+      }
+    } finally {
+      movieExporting = false;
+      movieExportProgress = 0;
+      exportAbort = null;
+      moviePaused = movieEngine.isComplete();
+      if (movieActive && !moviePaused) {
+        lastMovieTick = performance.now();
+        movieRaf = requestAnimationFrame(runMovieLoop);
+      }
+    }
+  }
+
   async function handleDelete(visit: Visit) {
     if (!visit) return;
     const confirmed = confirm(`删除 ${visit.location.name} 这条旅行记录？`);
@@ -136,10 +313,34 @@
     legs={visibleLegs}
     yearColors={yearColors}
     selectedVisitId={selectedVisit?.id ?? null}
+    movieMode={movieActive}
+    movieFrame={movieFrame}
+    movieActiveLeg={movieActiveLeg}
     onSelectVisit={selectVisit}
     onCreate={openCreate}
+    onStartMovie={startMovie}
+    on:svgready={(event) => {
+      movieSvg = event.detail;
+    }}
   />
 
+  {#if movieActive}
+    <MovieOverlay
+      movieFrame={movieFrame}
+      visits={plottedVisits}
+      paused={moviePaused}
+      complete={movieComplete}
+      exporting={movieExporting}
+      exportProgress={movieExportProgress}
+      canExport={movieCanExport}
+      onTogglePause={toggleMoviePause}
+      onExit={stopMovie}
+      onSeek={seekMovie}
+      onExport={exportMovie}
+    />
+  {/if}
+
+  {#if !movieActive}
   <aside class="atlas-sidebar glass-panel" aria-label="旅行图谱">
     <div class="brand-row">
       <div class="brand-mark">
@@ -224,6 +425,7 @@
     selectedVisitId={selectedVisit?.id ?? null}
     onSelectVisit={selectVisit}
   />
+  {/if}
 
   {#if editorOpen}
     <VisitForm mode={editorMode} visit={editingVisit} onClose={closeEditor} onSaved={handleSaved} />
