@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { CalendarDays, Globe, MapPinned, Plus, RefreshCw, Route, Star } from '@lucide/svelte';
+  import { CalendarDays, Globe, Image, MapPinned, Plus, RefreshCw, Route, Star } from '@lucide/svelte';
   import MovieOverlay from './components/MovieOverlay.svelte';
+  import PosterPreview from './components/PosterPreview.svelte';
   import TimelineStrip from './components/TimelineStrip.svelte';
   import TravelCanvas from './components/TravelCanvas.svelte';
   import TripPanel from './components/TripPanel.svelte';
@@ -17,6 +18,7 @@
     recordMovieVideo
   } from '$lib/movie/engine';
   import { plotVisits } from '$lib/movie/plotVisits';
+  import { buildPosterFilename, generatePoster } from '$lib/poster/renderPoster';
   import type { MovieFrameState } from '$lib/movie/types';
   import type { Atlas, AtlasStats, Visit, VisitMutationResult } from '$lib/types';
   import { visitYear } from '$lib/years';
@@ -42,6 +44,11 @@
   let movieExporting = false;
   let movieExportProgress = 0;
   let exportAbort: AbortController | null = null;
+  let posterPreviewOpen = false;
+  let posterGenerating = false;
+  let posterBlob: Blob | null = null;
+  let posterError = '';
+  let posterFilename = 'spacetime-travel.png';
 
   onMount(() => {
     loadAtlas();
@@ -109,6 +116,15 @@
         })()
       : null;
   $: movieCanExport = canExportVideo();
+  $: posterDisabledReason =
+    selectedYear === 'all'
+      ? '请先选择具体年份'
+      : visibleVisits.length === 0
+        ? '该年暂无旅行记录'
+        : posterGenerating
+          ? '正在生成海报…'
+          : '';
+  $: canGeneratePoster = posterDisabledReason === '';
 
   async function loadAtlas() {
     loading = true;
@@ -291,6 +307,37 @@
     }
   }
 
+  async function openPosterPreview() {
+    if (!canGeneratePoster || typeof selectedYear !== 'number') return;
+
+    posterPreviewOpen = true;
+    posterGenerating = true;
+    posterBlob = null;
+    posterError = '';
+    posterFilename = buildPosterFilename(selectedYear);
+
+    try {
+      posterBlob = await generatePoster({
+        year: selectedYear,
+        yearColor: yearColors[String(selectedYear)] || '#2d7c89',
+        visits: visibleVisits,
+        legs: visibleLegs,
+        yearColors
+      });
+    } catch (posterErr) {
+      posterError = posterErr instanceof Error ? posterErr.message : '海报生成失败，请重试';
+    } finally {
+      posterGenerating = false;
+    }
+  }
+
+  function closePosterPreview() {
+    if (posterGenerating) return;
+    posterPreviewOpen = false;
+    posterBlob = null;
+    posterError = '';
+  }
+
   async function handleDelete(visit: Visit) {
     if (!visit) return;
     const confirmed = confirm(`删除 ${visit.location.name} 这条旅行记录？`);
@@ -375,6 +422,16 @@
       </div>
     </div>
 
+    <button
+      type="button"
+      class="secondary-button poster-button"
+      disabled={!canGeneratePoster}
+      title={posterDisabledReason || '生成该年旅行海报'}
+      on:click={openPosterPreview}
+    >
+      <Image size={17} />生成海报
+    </button>
+
     <div class="trip-filter" aria-label="年份筛选">
       <button type="button" class:active={selectedYear === 'all'} on:click={() => selectYear('all')}>
         所有年份
@@ -430,6 +487,15 @@
   {#if editorOpen}
     <VisitForm mode={editorMode} visit={editingVisit} onClose={closeEditor} onSaved={handleSaved} />
   {/if}
+
+  <PosterPreview
+    open={posterPreviewOpen}
+    generating={posterGenerating}
+    blob={posterBlob}
+    filename={posterFilename}
+    error={posterError}
+    onClose={closePosterPreview}
+  />
 </main>
 
 <style>
@@ -518,6 +584,11 @@
     margin-top: 5px;
     color: #687b82;
     font-size: 12px;
+  }
+
+  .poster-button {
+    width: 100%;
+    justify-content: center;
   }
 
   .trip-filter {
