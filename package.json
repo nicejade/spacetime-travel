@@ -2,6 +2,7 @@
   "name": "spacetime-travel",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.11.1",
   "type": "module",
   "scripts": {
     "dev": "concurrently -n api,vite -c cyan,magenta \"pnpm api\" \"pnpm client\"",
