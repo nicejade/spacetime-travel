@@ -1,5 +1,6 @@
 export interface HttpError extends Error {
   status?: number;
+  statusCode?: number;
 }
 
 export interface VisitPayloadInput {

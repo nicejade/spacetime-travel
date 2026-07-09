@@ -14,5 +14,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:5168'
     }
-  }
+  },
+  build: {
+    outDir: './server/public',
+  },
 });

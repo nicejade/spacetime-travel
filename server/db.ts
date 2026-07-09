@@ -7,6 +7,7 @@ import type { HttpError, ParsedVisitPayload, VisitPayloadInput } from './types.j
 function httpError(status: number, message: string): HttpError {
   const error = new Error(message) as HttpError;
   error.status = status;
+  error.statusCode = status;
   return error;
 }
 
