@@ -5,6 +5,9 @@ node_modules/
 # Build output
 dist/
 
+# Scripts
+deploy2server.sh
+
 # Gazetteer build cache (raw GeoNames dumps)
 scripts/.cache/
 
