@@ -6,8 +6,10 @@
   import TimelineStrip from './components/TimelineStrip.svelte';
   import TravelCanvas from './components/TravelCanvas.svelte';
   import TripPanel from './components/TripPanel.svelte';
+  import ConfirmDialog from './components/ConfirmDialog.svelte';
   import VisitForm from './components/VisitForm.svelte';
   import { deleteVisit, fetchAtlas } from '$lib/api';
+  import { confirm } from '$lib/confirm';
   import { formatMonth } from '$lib/format';
   import {
     MovieEngine,
@@ -340,7 +342,10 @@
 
   async function handleDelete(visit: Visit) {
     if (!visit) return;
-    const confirmed = confirm(`删除 ${visit.location.name} 这条旅行记录？`);
+    const confirmed = await confirm({
+      message: `删除 ${visit.location.name} 这条旅行记录？`,
+      variant: 'danger'
+    });
     if (!confirmed) return;
 
     try {
@@ -395,7 +400,7 @@
       </div>
       <div>
         <p class="eyebrow">spacetime</p>
-        <h1>spacetime-travel</h1>
+        <h1>TRAVEL</h1>
       </div>
     </div>
 
@@ -496,6 +501,8 @@
     error={posterError}
     onClose={closePosterPreview}
   />
+
+  <ConfirmDialog />
 </main>
 
 <style>
@@ -539,16 +546,19 @@
   .eyebrow {
     margin: 0 0 2px;
     color: #697c82;
-    font-size: 12px;
+    font-size: 17px;
     font-weight: 800;
-    letter-spacing: 0;
+    letter-spacing: 0.02em;
+    line-height: 1.15;
     text-transform: uppercase;
   }
 
   h1 {
     margin: 0;
     color: #172832;
-    font-size: 21px;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
     line-height: 1.15;
   }
 
@@ -597,7 +607,7 @@
     flex-direction: column;
     gap: 8px;
     overflow: auto;
-    padding-right: 2px;
+    padding: 1px 2px 1px 0;
   }
 
   .trip-filter button {
@@ -685,7 +695,7 @@
       flex-direction: row;
       overflow-x: auto;
       overflow-y: hidden;
-      padding-bottom: 2px;
+      padding: 1px 0 2px;
     }
 
     .trip-filter button {

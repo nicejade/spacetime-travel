@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Save, X } from '@lucide/svelte';
   import LocationPicker from './LocationPicker.svelte';
+  import TagInput from './TagInput.svelte';
   import { createVisit, updateVisit } from '$lib/api';
   import { transports } from '$lib/format';
   import type { Visit, VisitMutationResult, VisitPayload } from '$lib/types';
@@ -201,7 +202,9 @@
 
     <label>
       <span>标签</span>
-      <input class="field" bind:value={values.tags} placeholder="海边,美食,独旅" />
+      {#key key}
+        <TagInput bind:value={values.tags} placeholder="输入后按逗号或回车键生成标签" />
+      {/key}
     </label>
 
     {#if error}
