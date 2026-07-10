@@ -21,9 +21,24 @@ export interface Visit {
   memory: string;
   tags: string;
   sequence: number;
-  transport: string | null;
-  legNote: string | null;
   location: Location;
+  origin: Location;
+  returnsToOrigin: boolean;
+  outboundTransport: string;
+  outboundNote: string;
+  returnTransport: string | null;
+  returnNote: string;
+  inboundTransport: string | null;
+  inboundNote: string | null;
+}
+
+export interface VisitRoute {
+  visitId: number;
+  kind: 'outbound' | 'return';
+  from: Location;
+  to: Location;
+  transport: string;
+  note: string;
 }
 
 export interface Leg {
@@ -48,6 +63,8 @@ export interface AtlasStats {
 export interface Atlas {
   visits: Visit[];
   legs: Leg[];
+  visitRoutes: VisitRoute[];
+  originSuggestions: Location[];
   years: number[];
   yearColors: Record<string, string>;
   stats: AtlasStats;
@@ -60,8 +77,17 @@ export interface VisitPayload {
   lng: number | string;
   arrivedAt: string;
   departedAt?: string;
-  transport?: string;
-  legNote?: string;
+  originName: string;
+  originCountry: string;
+  originLat: number | string;
+  originLng: number | string;
+  returnsToOrigin?: boolean;
+  outboundTransport?: string;
+  outboundNote?: string;
+  returnTransport?: string;
+  returnNote?: string;
+  inboundTransport?: string;
+  inboundNote?: string;
   feeling?: string;
   food?: string;
   rating?: number | string;
