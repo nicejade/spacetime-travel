@@ -2,8 +2,8 @@
   import { Save, X } from '@lucide/svelte';
   import LocationPicker from './LocationPicker.svelte';
   import TagInput from './TagInput.svelte';
+  import TransportSelect from './TransportSelect.svelte';
   import { createVisit, updateVisit } from '$lib/api';
-  import { transports } from '$lib/format';
   import type { Visit, VisitMutationResult, VisitPayload } from '$lib/types';
 
   export let mode: 'create' | 'edit' = 'create';
@@ -157,11 +157,7 @@
     <div class="field-row">
       <label>
         <span>前往方式</span>
-        <select class="select-field" bind:value={values.transport}>
-          {#each transports as transport}
-            <option value={transport.value}>{transport.label}</option>
-          {/each}
-        </select>
+        <TransportSelect bind:value={values.transport} />
       </label>
       <label>
         <span>评分：{Number(values.rating).toFixed(1)}</span>
