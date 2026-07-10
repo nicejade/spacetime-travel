@@ -3,14 +3,17 @@
   import { Play, Plus, RotateCcw, ZoomIn, ZoomOut } from '@lucide/svelte';
   import { geoGraticule } from 'd3-geo';
   import { formatMonth, transportClass, transportDash } from '$lib/format';
-  import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator } from '$lib/geo';
+  import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator, projection } from '$lib/geo';
+  import { plotOrigins } from '$lib/map/plotOrigins';
   import { buildRouteGeometry } from '$lib/movie/pathSampler';
   import { plotVisits } from '$lib/movie/plotVisits';
+  import type { PlottedVisit } from '$lib/movie/types';
   import type { MovieFrameState } from '$lib/movie/types';
-  import type { Leg, Visit } from '$lib/types';
+  import type { Leg, Location, Visit, VisitRoute } from '$lib/types';
 
   export let visits: Visit[] = [];
   export let legs: Leg[] = [];
+  export let visitRoutes: VisitRoute[] = [];
   export let yearColors: Record<string, string> = {};
   export let selectedVisitId: number | null = null;
   export let movieMode = false;
@@ -41,6 +44,7 @@
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
 
   $: plottedVisits = plotVisits(visits, yearColors);
+  $: plottedOrigins = plotOrigins(visits);
   $: plottedById = new Map(plottedVisits.map((visit) => [visit.id, visit]));
   $: zoomLabel = `${Math.round(scale * 100)}%`;
   $: canStartMovie = plottedVisits.length > 0;
@@ -143,6 +147,41 @@
     return buildRouteGeometry(from, to, index).d;
   }
 
+  function locationToPlotted(location: Location, id: number): PlottedVisit {
+    const [x, y] = projection([location.lng, location.lat]) ?? [0, 0];
+    return {
+      id,
+      x,
+      y,
+      yearColor: '#2d7c89',
+      arrivedAt: '',
+      departedAt: null,
+      feeling: '',
+      food: '',
+      rating: 4,
+      mood: '',
+      weather: '',
+      memory: '',
+      tags: '',
+      sequence: 0,
+      location,
+      origin: location,
+      returnsToOrigin: false,
+      outboundTransport: 'flight',
+      outboundNote: '',
+      returnTransport: null,
+      returnNote: '',
+      inboundTransport: null,
+      inboundNote: null
+    };
+  }
+
+  function buildLocationRoute(route: VisitRoute, index: number) {
+    const from = locationToPlotted(route.from, route.visitId * 10);
+    const to = locationToPlotted(route.to, route.visitId * 10 + 1);
+    return buildRouteGeometry(from, to, index).d;
+  }
+
   function legColor(leg: Leg) {
     const to = plottedById.get(leg.toVisitId);
     return to?.yearColor || '#2d7c89';
@@ -242,6 +281,17 @@
         <path class="country" d={pathGenerator(country)} />
       {/each}
 
+      <g class="visit-routes">
+        {#each visitRoutes as route, index (`${route.visitId}-${route.kind}`)}
+          <path
+            class={`visit-route visit-route-${route.kind} ${transportClass(route.transport)}`}
+            d={buildLocationRoute(route, index)}
+            stroke-dasharray={route.kind === 'return' ? '4 6' : transportDash(route.transport)}
+            opacity={route.kind === 'return' ? 0.2 : 0.3}
+          />
+        {/each}
+      </g>
+
       <g class="trip-routes">
         {#each legs as leg, index (leg.id)}
           <path
@@ -277,6 +327,13 @@
               <tspan x="18" dy="17">{visit.location.name}</tspan>
             </text>
           {/if}
+        </g>
+      {/each}
+
+      {#each plottedOrigins as origin (origin.key)}
+        <g class="origin-node" transform={`translate(${origin.x} ${origin.y})`}>
+          <circle class="origin-ring" r="6" />
+          <text class="origin-label" x="10" y="4">{origin.name}</text>
         </g>
       {/each}
 
@@ -391,6 +448,37 @@
     stroke: rgba(71, 103, 101, 0.2);
     stroke-width: 0.72;
     vector-effect: non-scaling-stroke;
+  }
+
+  .visit-route {
+    fill: none;
+    stroke-width: 1.4;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .visit-route-outbound {
+    stroke: #2d7c89;
+  }
+
+  .visit-route-return {
+    stroke: #667a80;
+  }
+
+  .origin-ring {
+    fill: #f8fbf7;
+    stroke: #2d7c89;
+    stroke-width: 1.6;
+  }
+
+  .origin-label {
+    pointer-events: none;
+    font-size: 11px;
+    fill: #304751;
+    font-weight: 700;
+    paint-order: stroke;
+    stroke: rgba(255, 255, 255, 0.84);
+    stroke-linejoin: round;
+    stroke-width: 3px;
   }
 
   .route-line {
