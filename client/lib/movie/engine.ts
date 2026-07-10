@@ -26,7 +26,7 @@ function resolveLegs(visits: PlottedVisit[], legs: Leg[]): ResolvedLeg[] {
     const to = visits[index + 1];
     const leg =
       legs.find((item) => item.fromVisitId === from.id && item.toVisitId === to.id) ?? null;
-    const transport = leg?.transport || to.transport || 'walk';
+    const transport = leg?.transport || to.inboundTransport || 'walk';
 
     resolved.push({
       leg,
@@ -66,7 +66,7 @@ export class MovieEngine {
     this.camera = firstVisit
       ? computeDwellCamera(
           { x: firstVisit.x, y: firstVisit.y },
-          this.resolvedLegs[0]?.transport || firstVisit.transport || 'walk',
+          this.resolvedLegs[0]?.transport || firstVisit.outboundTransport || 'walk',
           this.viewportWidth,
           this.viewportHeight
         )
@@ -117,7 +117,8 @@ export class MovieEngine {
       const transport =
         this.resolvedLegs[segment.visitIndex]?.transport ||
         this.resolvedLegs[segment.visitIndex - 1]?.transport ||
-        visit.transport ||
+        visit.inboundTransport ||
+        visit.outboundTransport ||
         'walk';
       const lightPosition = { x: visit.x, y: visit.y };
       const target = computeDwellCamera(

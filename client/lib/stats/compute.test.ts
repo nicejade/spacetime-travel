@@ -5,6 +5,14 @@ import { filterVisits } from './filter';
 import type { Visit } from '$lib/types';
 
 function makeVisit(overrides: Partial<Visit> & Pick<Visit, 'id' | 'arrivedAt' | 'location'>): Visit {
+  const origin = overrides.origin ?? {
+    id: 99,
+    name: '家',
+    country: '中国',
+    lat: 30.27,
+    lng: 120.15,
+    kind: 'city'
+  };
   return {
     departedAt: null,
     feeling: '',
@@ -15,8 +23,14 @@ function makeVisit(overrides: Partial<Visit> & Pick<Visit, 'id' | 'arrivedAt' | 
     memory: '',
     tags: '',
     sequence: overrides.id,
-    transport: 'flight',
-    legNote: null,
+    origin,
+    returnsToOrigin: true,
+    outboundTransport: 'flight',
+    outboundNote: '',
+    returnTransport: null,
+    returnNote: '',
+    inboundTransport: null,
+    inboundNote: null,
     ...overrides
   };
 }
