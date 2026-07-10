@@ -132,9 +132,16 @@ data/spacetime-travel.sqlite
 
 Core tables:
 
-- `locations`: geographic points.
-- `visits`: travel memories attached to a location, ordered globally by arrival date.
-- `legs`: movement between adjacent visits, including transport mode and notes.
+- `locations`: geographic points (destinations and trip origins).
+- `visits`: travel memories with a **destination** (`location_id`) and **origin** (`origin_location_id`), ordered globally by arrival date. Each visit stores:
+  - `outbound_*`: how you left the origin for this stop.
+  - `return_*` + `returns_to_origin`: optional return leg back to the origin (defaults to returning).
+  - `inbound_*`: how you arrived at this stop from the **previous** visit in the timeline (drives `legs` for non-first stops).
+- `legs`: time-ordered connections between adjacent visits (built from each visit’s `inbound_*` fields).
+
+The atlas API also returns **`visitRoutes`**: synthetic outbound/return segments per visit (origin → destination and, when `returnsToOrigin` is true, destination → origin). These are for map rendering and detail UI; **`legs`** remain the chronological spine used by movie mode.
+
+`originSuggestions` lists locations previously used as origins for quick form fill.
 
 Years and year colors are derived from `arrived_at` at query time (not stored as entities).
 
@@ -154,7 +161,7 @@ Health check.
 GET /api/atlas
 ```
 
-Returns visits, legs, years, yearColors, and aggregate stats.
+Returns visits, legs, visitRoutes, originSuggestions, years, yearColors, and aggregate stats.
 
 ```http
 POST /api/visits

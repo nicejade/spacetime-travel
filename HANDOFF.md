@@ -15,6 +15,7 @@
 - **数据录入**：节点创建 / 编辑 / 删除；字段涵盖感受、饮食、心境、天气、记忆片段、标签、评分；支持离线地名搜索与地图点选坐标。
 - **浏览导航**：年份筛选（默认「所有年份」）、时间轴条、详情面板、统计卡（节点数 / 地区数 / 均分 / 年份跨度）；地图按到达年份着色。
 - **数据层**：SQLite + WAL、事务化写入、全局 `sequence` / 相邻 `legs` 重建、扁平 visits 种子数据（无 `trips` 表）。
+- **出发起点与回程**：每条 visit 记录完整出发信息（起点 → 目的地 → 可选回程）。`visits` 含 `origin_location_id`、`returns_to_origin`、`outbound_*`、`return_*`、`inbound_*`；`legs` 仍表示站间时序连线（由 `inbound_*` 驱动）；`getAtlas` 合成 `visitRoutes`（去程/回程）供地图细线与详情展示；常用起点通过 `originSuggestions` 回填表单。
 - Vite 前端与 Express API 分端口运行，前端通过 proxy 转发 `/api/*`。
 
 ## 整体评价
@@ -39,6 +40,13 @@
 3. **JSON 导出 / 导入**
    - 新增 `GET /api/export`（全量 JSON）与 `POST /api/import`（恢复）。
    - 数据仅存在单个 `.sqlite` 文件中，目前没有任何导出口，这是本地优先应用的安全底线。
+
+## Visit origin 功能备忘
+
+- **删库重建**：`visits` schema 含 origin/return 字段，无迁移脚本。升级后删除 `data/spacetime-travel.sqlite*` 并重启以重 seed。
+- **站间移动字段**：`VisitForm` 的 `inbound_*` 仅在非首站时显示（新建时若已有 visits，或编辑 `sequence > 1` 的 visit）。
+- **Smoke**：`node --import tsx scripts/smoke-visit-origin.mjs` 应输出 `smoke ok`。
+- **电影模式**：仍由 `legs` 驱动路径；`visitRoutes` 不参与播放。
 
 ## 已知问题
 
