@@ -4,10 +4,12 @@
   import TagInput from './TagInput.svelte';
   import TransportSelect from './TransportSelect.svelte';
   import { createVisit, updateVisit } from '$lib/api';
-  import type { Visit, VisitMutationResult, VisitPayload } from '$lib/types';
+  import type { Location, Transport, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
 
   export let mode: 'create' | 'edit' = 'create';
   export let visit: Visit | null = null;
+  export let originSuggestions: Location[] = [];
+  export let showInboundFields = false;
   export let onClose: () => void = () => {};
   export let onSaved: (result: VisitMutationResult) => void = () => {};
 
@@ -30,10 +32,19 @@
         country: visit.location.country,
         lat: visit.location.lat,
         lng: visit.location.lng,
+        originName: visit.origin.name,
+        originCountry: visit.origin.country,
+        originLat: visit.origin.lat,
+        originLng: visit.origin.lng,
+        returnsToOrigin: visit.returnsToOrigin,
+        outboundTransport: visit.outboundTransport,
+        outboundNote: visit.outboundNote,
+        returnTransport: visit.returnTransport || '',
+        returnNote: visit.returnNote,
+        inboundTransport: visit.inboundTransport || 'flight',
+        inboundNote: visit.inboundNote || '',
         arrivedAt: visit.arrivedAt,
         departedAt: visit.departedAt || '',
-        transport: visit.transport || 'flight',
-        legNote: visit.legNote || '',
         feeling: visit.feeling || '',
         food: visit.food || '',
         rating: visit.rating || 4,
@@ -49,10 +60,19 @@
       country: '',
       lat: '',
       lng: '',
+      originName: '',
+      originCountry: '',
+      originLat: '',
+      originLng: '',
+      returnsToOrigin: true,
+      outboundTransport: 'flight',
+      outboundNote: '',
+      returnTransport: '',
+      returnNote: '',
+      inboundTransport: 'flight',
+      inboundNote: '',
       arrivedAt: new Date().toISOString().slice(0, 10),
       departedAt: '',
-      transport: 'flight',
-      legNote: '',
       feeling: '',
       food: '',
       rating: 4.5,
@@ -64,6 +84,11 @@
   }
 
   async function submit() {
+    if (Number(values.lat) === Number(values.originLat) && Number(values.lng) === Number(values.originLng)) {
+      error = '起点与目的地不能相同';
+      return;
+    }
+
     busy = true;
     error = '';
 
@@ -79,8 +104,6 @@
   }
 
   function handlePick(place: { name?: string; country?: string; lat: number; lng: number }) {
-    // Search hits also carry a name; map clicks only carry country + coordinates,
-    // so we never overwrite a name the user already typed.
     if (place.name) values.locationName = place.name;
     if (place.country) values.country = place.country;
     values.lat = place.lat;
@@ -88,7 +111,23 @@
     values = values;
   }
 
-  function handleBackdropClick(event) {
+  function handleOriginPick(place: { name?: string; country?: string; lat: number; lng: number }) {
+    if (place.name) values.originName = place.name;
+    if (place.country) values.originCountry = place.country;
+    values.originLat = place.lat;
+    values.originLng = place.lng;
+    values = values;
+  }
+
+  function fillOrigin(suggestion: Location) {
+    values.originName = suggestion.name;
+    values.originCountry = suggestion.country;
+    values.originLat = suggestion.lat;
+    values.originLng = suggestion.lng;
+    values = values;
+  }
+
+  function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
       onClose();
     }
@@ -106,6 +145,70 @@
         <X size={18} />
       </button>
     </div>
+
+    {#if originSuggestions.length}
+      <div class="origin-chips">
+        <span class="picker-label">常用起点</span>
+        <div class="chip-row">
+          {#each originSuggestions as suggestion (suggestion.id)}
+            <button type="button" class="chip" on:click={() => fillOrigin(suggestion)}>
+              {suggestion.name}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    <div class="section-label">出发</div>
+
+    <div class="picker-block">
+      <span class="picker-label">起点</span>
+      <LocationPicker
+        name={values.originName}
+        country={values.originCountry}
+        lat={values.originLat}
+        lng={values.originLng}
+        onPick={handleOriginPick}
+      />
+    </div>
+
+    <div class="field-row">
+      <label>
+        <span>起点名称</span>
+        <input class="field" required name="originName" bind:value={values.originName} placeholder="杭州" />
+      </label>
+      <label>
+        <span>起点国家/地区</span>
+        <input class="field" required name="originCountry" bind:value={values.originCountry} placeholder="中国" />
+      </label>
+    </div>
+
+    <details class="coord-details">
+      <summary>手动微调起点坐标</summary>
+      <div class="field-row coord-row">
+        <label>
+          <span>纬度</span>
+          <input class="field" required type="number" min="-90" max="90" step="0.0001" bind:value={values.originLat} />
+        </label>
+        <label>
+          <span>经度</span>
+          <input class="field" required type="number" min="-180" max="180" step="0.0001" bind:value={values.originLng} />
+        </label>
+      </div>
+    </details>
+
+    <div class="field-row">
+      <label>
+        <span>去程方式</span>
+        <TransportSelect bind:value={values.outboundTransport as Transport} />
+      </label>
+      <label>
+        <span>去程备注</span>
+        <input class="field" bind:value={values.outboundNote} placeholder="从家出发的路上" />
+      </label>
+    </div>
+
+    <div class="section-label">目的地</div>
 
     <div class="picker-block">
       <span class="picker-label">选择地点</span>
@@ -154,11 +257,20 @@
       </label>
     </div>
 
+    {#if showInboundFields}
+      <div class="field-row">
+        <label>
+          <span>站间移动</span>
+          <TransportSelect bind:value={values.inboundTransport as Transport} />
+        </label>
+        <label>
+          <span>站间备注</span>
+          <input class="field" bind:value={values.inboundNote} placeholder="上一站目的地到这里的路上" />
+        </label>
+      </div>
+    {/if}
+
     <div class="field-row">
-      <label>
-        <span>前往方式</span>
-        <TransportSelect bind:value={values.transport} />
-      </label>
       <label>
         <span>评分：{Number(values.rating).toFixed(1)}</span>
         <input class="field" type="range" min="1" max="5" step="0.1" bind:value={values.rating} />
@@ -192,16 +304,34 @@
     </label>
 
     <label>
-      <span>移动备注</span>
-      <input class="field" bind:value={values.legNote} placeholder="从上一站到这里的路上发生了什么" />
-    </label>
-
-    <label>
       <span>标签</span>
       {#key key}
         <TagInput bind:value={values.tags} placeholder="输入后按逗号或回车键生成标签" />
       {/key}
     </label>
+
+    <div class="section-label">返回</div>
+
+    <label class="checkbox-row">
+      <input type="checkbox" bind:checked={values.returnsToOrigin} />
+      <span>返回起点</span>
+    </label>
+
+    {#if values.returnsToOrigin}
+      <details class="return-details">
+        <summary>返程方式（默认同去程）</summary>
+        <div class="field-row">
+          <label>
+            <span>返程方式</span>
+            <TransportSelect bind:value={values.returnTransport as Transport} />
+          </label>
+          <label>
+            <span>返程备注</span>
+            <input class="field" bind:value={values.returnNote} placeholder="回程路上的记忆" />
+          </label>
+        </div>
+      </details>
+    {/if}
 
     {#if error}
       <p class="form-error">{error}</p>
@@ -270,6 +400,15 @@
     font-weight: 800;
   }
 
+  .section-label {
+    margin-top: 4px;
+    color: #2d7c89;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   .field-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -285,6 +424,83 @@
     color: #304751;
     font-size: 13px;
     font-weight: 800;
+  }
+
+  .origin-chips {
+    display: grid;
+    gap: 8px;
+  }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    border: 1px solid rgba(45, 124, 137, 0.22);
+    border-radius: 999px;
+    background: rgba(45, 124, 137, 0.08);
+    color: #2d7c89;
+    cursor: pointer;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    transition: background 140ms ease, border-color 140ms ease;
+  }
+
+  .chip:hover {
+    border-color: rgba(45, 124, 137, 0.42);
+    background: rgba(45, 124, 137, 0.14);
+  }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+
+  .checkbox-row input {
+    width: 16px;
+    height: 16px;
+    accent-color: #2d7c89;
+  }
+
+  .checkbox-row span {
+    color: #304751;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .return-details {
+    border: 1px solid rgba(31, 54, 63, 0.11);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 4px 12px;
+  }
+
+  .return-details summary {
+    padding: 8px 0;
+    color: #304751;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .return-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .return-details summary::before {
+    content: '▸';
+    margin-right: 6px;
+    color: #6a7f85;
+  }
+
+  .return-details[open] summary::before {
+    content: '▾';
   }
 
   .coord-details {

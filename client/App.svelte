@@ -90,6 +90,7 @@
 
   $: visits = atlas?.visits ?? [];
   $: legs = atlas?.legs ?? [];
+  $: visitRoutes = atlas?.visitRoutes ?? [];
   $: years = atlas?.years ?? [];
   $: yearColors = atlas?.yearColors ?? {};
   $: stats = (atlas?.stats ?? {
@@ -108,6 +109,10 @@
     selectedYear === 'all'
       ? legs
       : legs.filter((leg) => visibleVisitIds.has(leg.fromVisitId) && visibleVisitIds.has(leg.toVisitId));
+  $: visibleVisitRoutes =
+    selectedYear === 'all'
+      ? visitRoutes
+      : visitRoutes.filter((route) => visibleVisitIds.has(route.visitId));
   $: selectedVisit =
     visits.find((visit) => visit.id === selectedVisitId) ?? visibleVisits.at(-1) ?? null;
   $: selectedVisitYear = selectedVisit ? visitYear(selectedVisit.arrivedAt) : null;
@@ -385,6 +390,7 @@
   <TravelCanvas
     visits={visibleVisits}
     legs={visibleLegs}
+    visitRoutes={visibleVisitRoutes}
     yearColors={yearColors}
     selectedVisitId={selectedVisit?.id ?? null}
     movieMode={movieActive}
@@ -536,7 +542,14 @@
   {/if}
 
   {#if editorOpen}
-    <VisitForm mode={editorMode} visit={editingVisit} onClose={closeEditor} onSaved={handleSaved} />
+    <VisitForm
+      mode={editorMode}
+      visit={editingVisit}
+      originSuggestions={atlas?.originSuggestions ?? []}
+      showInboundFields={editorMode === 'edit' && editingVisit ? editingVisit.sequence > 1 : visits.length > 0}
+      onClose={closeEditor}
+      onSaved={handleSaved}
+    />
   {/if}
 
   <PosterPreview
