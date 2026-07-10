@@ -55,7 +55,7 @@ pnpm dev
 Open:
 
 ```text
-http://localhost:5188
+http://localhost:5167
 ```
 
 The API runs on:
@@ -78,7 +78,7 @@ Starts both the Express API and the Vite dev server.
 pnpm client
 ```
 
-Starts only the Vite frontend on port `5188`.
+Starts only the Vite frontend on port `5167`.
 
 ```bash
 pnpm api
@@ -176,6 +176,6 @@ Deletes a visit and rebuilds the global sequence / adjacent legs.
 
 ## Notes
 
-- Port `5188` is used for the Vite frontend to avoid common conflicts with other Vite apps on `5173`.
+- Port `5167` is used for the Vite frontend to avoid common conflicts with other Vite apps on `5173`.
 - Runtime database files are ignored by Git.
 - The app is currently a local MVP and has no authentication or multi-user support.
