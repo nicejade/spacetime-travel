@@ -45,9 +45,27 @@
         <span>{formatDate(visit.arrivedAt)} - {formatDate(visit.departedAt)}</span>
       </div>
       <div>
-        <Plane size={16} />
-        <span>{transportLabel(visit.transport)}</span>
+        <MapPin size={16} />
+        <span>从 {visit.origin.name} 出发</span>
       </div>
+      <div>
+        <Plane size={16} />
+        <span>去程：{transportLabel(visit.outboundTransport)}</span>
+      </div>
+      {#if visit.returnsToOrigin}
+        <div>
+          <Plane size={16} />
+          <span>返程：{transportLabel(visit.returnTransport ?? visit.outboundTransport)}</span>
+        </div>
+      {:else}
+        <span class="one-way-badge">未返回起点</span>
+      {/if}
+      {#if visit.inboundTransport}
+        <div>
+          <Plane size={16} />
+          <span>站间：{transportLabel(visit.inboundTransport)}</span>
+        </div>
+      {/if}
       <div>
         <Star size={16} />
         <span>{ratingText(visit.rating)}</span>
@@ -81,7 +99,7 @@
       {/if}
     </section>
 
-    {#if visit.memory || visit.weather || visit.mood || visit.legNote}
+    {#if visit.memory || visit.weather || visit.mood || visit.inboundNote}
       <div class="memory-grid">
         {#if visit.mood}
           <div>
@@ -101,10 +119,10 @@
             <strong>{visit.memory}</strong>
           </div>
         {/if}
-        {#if visit.legNote}
+        {#if visit.inboundNote}
           <div>
-            <small>移动</small>
-            <strong>{visit.legNote}</strong>
+            <small>站间</small>
+            <strong>{visit.inboundNote}</strong>
           </div>
         {/if}
       </div>
@@ -207,6 +225,17 @@
     font-weight: 700;
     line-height: 1.35;
     overflow-wrap: anywhere;
+  }
+
+  .one-way-badge {
+    display: inline-flex;
+    align-self: start;
+    border-radius: 999px;
+    background: rgba(196, 92, 38, 0.12);
+    color: #9b4a1f;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 4px 10px;
   }
 
   section {
