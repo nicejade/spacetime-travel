@@ -1,10 +1,21 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { CalendarDays, Globe, Image, MapPinned, Plus, RefreshCw, Route, Star } from '@lucide/svelte';
+  import {
+    BarChart3,
+    CalendarDays,
+    Globe,
+    Image,
+    MapPinned,
+    Plus,
+    RefreshCw,
+    Route,
+    Star
+  } from '@lucide/svelte';
   import MovieOverlay from './components/MovieOverlay.svelte';
   import PosterPreview from './components/PosterPreview.svelte';
   import TimelineStrip from './components/TimelineStrip.svelte';
   import TravelCanvas from './components/TravelCanvas.svelte';
+  import StatsView from './components/StatsView.svelte';
   import TripPanel from './components/TripPanel.svelte';
   import ConfirmDialog from './components/ConfirmDialog.svelte';
   import VisitForm from './components/VisitForm.svelte';
@@ -51,6 +62,8 @@
   let posterBlob: Blob | null = null;
   let posterError = '';
   let posterFilename = 'spacetime-travel.png';
+  let activeView: 'map' | 'stats' = 'map';
+  let statsYear: number | 'all' = 'all';
 
   onMount(() => {
     loadAtlas();
@@ -340,6 +353,15 @@
     posterError = '';
   }
 
+  function openStatsView() {
+    if (loading) return;
+    activeView = 'stats';
+  }
+
+  function closeStatsView() {
+    activeView = 'map';
+  }
+
   async function handleDelete(visit: Visit) {
     if (!visit) return;
     const confirmed = await confirm({
@@ -392,7 +414,21 @@
     />
   {/if}
 
-  {#if !movieActive}
+  {#if activeView === 'stats'}
+    <StatsView
+      visits={visits}
+      years={years}
+      yearColors={yearColors}
+      statsYear={statsYear}
+      loading={loading}
+      onBack={closeStatsView}
+      onStatsYearChange={(year) => {
+        statsYear = year;
+      }}
+    />
+  {/if}
+
+  {#if !movieActive && activeView === 'map'}
   <aside class="atlas-sidebar glass-panel" aria-label="旅行图谱">
     <div class="brand-row">
       <div class="brand-mark">
@@ -426,6 +462,16 @@
         <small>时间</small>
       </div>
     </div>
+
+    <button
+      type="button"
+      class="secondary-button poster-button"
+      disabled={loading}
+      title="查看旅行统计"
+      on:click={openStatsView}
+    >
+      <BarChart3 size={17} />旅行统计
+    </button>
 
     <button
       type="button"
