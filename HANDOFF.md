@@ -267,13 +267,13 @@
 
 ### P4-2 · 拆分上帝组件
 
-- **问题**：`App.svelte` ~765 行（编排+电影+海报+UI）；`TravelCanvas` ~625；`VisitForm` ~596。
-- **建议做法**：
-  - App：抽出 `useMovieSession` / poster 生成逻辑到 `client/lib/` 或小模块。
-  - TravelCanvas：控制条 / 节点层 / 路线层拆子组件。
-  - VisitForm：outbound / return / inbound / memory 分段子组件。
-- **验收**：单文件行数明显下降；行为不变。
-- **依赖**：与 P4-1 可先后，避免同会话又迁 runes 又拆文件。
+- **状态**：~~部分完成（2026-07-11，App 编排抽出）~~
+- **本会话完成**：
+  - `client/lib/movie/session.ts`：`createMovieSession`（播放 / 导出 / viewport / activeLeg）
+  - `client/lib/poster/preview.ts`：`createPosterPreview` + `posterDisabledReason`
+  - `App.svelte` 从 ~927 行降至 ~746 行；行为保持 store 驱动
+- **未做（后续会话）**：TravelCanvas 控制条/节点/路线子组件；VisitForm 分段子组件。
+- **非目标**：本会话不做 P4-1 runes。
 
 ### P4-3 · 去重 pan/zoom 与 plotVisits
 
@@ -353,6 +353,7 @@
 | 删除撤销 | 删除后 8s Toast「撤销」→ `createVisit` 恢复 |
 | 地图 pan clamp / 电影 viewport / path 预计算 | `clampMapPan`；resize → `setViewport`；`countryPaths` |
 | 共享 years / server 类型边界 | `shared/years.ts`；`VisitRoute` 迁入 `server/types.ts` |
+| App 编排拆分（部分） | `movie/session.ts` + `poster/preview.ts`；App 行数下降 |
 
 ---
 
@@ -371,7 +372,7 @@
 | 9 | ~~删除撤销~~ | ~~P2-2~~ |
 | 10 | ~~pan clamp + 电影 viewport + path 预计算~~ | ~~P3-1, P3-2, P3-4~~ |
 | 11 | ~~共享 years / server 类型边界~~ | ~~P1-6, P1-7~~ |
-| 12 | 前端拆分或 runes（选其一） | P4-1 或 P4-2 |
+| 12 | ~~App 电影/海报编排抽出~~（TravelCanvas/VisitForm 仍待拆） | ~~P4-2（部分）~~ |
 | 13 | 产品增强按需 | P5-* |
 
 ---
@@ -401,6 +402,7 @@
   client/lib/movie/timeline.test.ts
   client/lib/visitPayload.test.ts
   client/lib/map/clampPan.test.ts
+  client/lib/poster/preview.test.ts
   shared/years.test.ts
   ```
 - Specs：`docs/superpowers/specs/`、`docs/superpowers/plans/`

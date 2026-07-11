@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import {
     BarChart3,
     CalendarDays,
@@ -23,18 +23,10 @@
   import VisitForm from './components/VisitForm.svelte';
   import { createVisit, deleteVisit, fetchAtlas, fetchExportDocument, importAtlasDocument } from '$lib/api';
   import { confirm } from '$lib/confirm';
-  import { formatMonth } from '$lib/format';
-  import {
-    MovieEngine,
-    buildExportFilename,
-    canExportVideo,
-    computeExportSize,
-    downloadBlob,
-    recordMovieVideo
-  } from '$lib/movie/engine';
+  import { downloadBlob } from '$lib/movie/engine';
+  import { createMovieSession } from '$lib/movie/session';
   import { plotVisits } from '$lib/movie/plotVisits';
-  import { buildPosterFilename, generatePoster } from '$lib/poster/renderPoster';
-  import type { MovieFrameState } from '$lib/movie/types';
+  import { createPosterPreview } from '$lib/poster/preview';
   import type { Atlas, AtlasStats, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
   import { visitToPayload } from '$lib/visitPayload';
   import { visitYear } from '$lib/years';
@@ -49,22 +41,6 @@
   let editorMode: 'create' | 'edit' = 'create';
   let editingVisit: Visit | null = null;
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
-  let movieActive = false;
-  let moviePaused = false;
-  let movieComplete = false;
-  let movieEngine: MovieEngine | null = null;
-  let movieFrame: MovieFrameState | null = null;
-  let movieSvg: SVGSVGElement | null = null;
-  let movieRaf = 0;
-  let lastMovieTick = 0;
-  let movieExporting = false;
-  let movieExportProgress = 0;
-  let exportAbort: AbortController | null = null;
-  let posterPreviewOpen = false;
-  let posterGenerating = false;
-  let posterBlob: Blob | null = null;
-  let posterError = '';
-  let posterFilename = 'spacetime-travel.png';
   let activeView: 'map' | 'stats' = 'map';
   let statsYear: number | 'all' = 'all';
   let importInput: HTMLInputElement | null = null;
@@ -74,26 +50,33 @@
 
   const UNDO_WINDOW_MS = 8000;
 
+  const movie = createMovieSession({
+    getVisits: () => plottedVisits,
+    getLegs: () => visibleLegs,
+    getSelectedYear: () => selectedYear,
+    onNotice: (message) => flash(message)
+  });
+  const poster = createPosterPreview();
+
   onMount(() => {
     loadAtlas();
     const handleKeydown = (event: KeyboardEvent) => {
-      if (!movieActive || movieExporting) return;
+      if (!$movie.active || $movie.exporting) return;
       if (event.key === ' ' || event.code === 'Space') {
         event.preventDefault();
-        toggleMoviePause();
+        movie.togglePause();
       }
       if (event.key === 'Escape') {
         event.preventDefault();
-        stopMovie();
+        movie.stop();
       }
     };
 
     window.addEventListener('keydown', handleKeydown);
     return () => {
       clearTimeout(noticeTimer);
-      cancelAnimationFrame(movieRaf);
       window.removeEventListener('keydown', handleKeydown);
-      exportAbort?.abort();
+      movie.dispose();
     };
   });
 
@@ -133,26 +116,11 @@
       : `${stats.startYear} - ${stats.endYear}`
     : '未开始';
   $: plottedVisits = plotVisits(visibleVisits, yearColors);
-  $: movieActiveLeg =
-    movieFrame?.activeLegIndex != null && movieEngine
-      ? (() => {
-          const resolved = movieEngine.resolvedLegs[movieFrame.activeLegIndex ?? -1];
-          if (!resolved) return null;
-          const from = movieEngine.visits[resolved.fromIndex];
-          const to = movieEngine.visits[resolved.toIndex];
-          if (!from || !to) return null;
-          return { fromVisitId: from.id, toVisitId: to.id };
-        })()
-      : null;
-  $: movieCanExport = canExportVideo();
-  $: posterDisabledReason =
-    selectedYear === 'all'
-      ? '请先选择具体年份'
-      : visibleVisits.length === 0
-        ? '该年暂无旅行记录'
-        : posterGenerating
-          ? '正在生成海报…'
-          : '';
+  $: posterDisabledReason = poster.posterDisabledReason(
+    selectedYear,
+    visibleVisits.length,
+    $poster.generating
+  );
   $: canGeneratePoster = posterDisabledReason === '';
 
   async function loadAtlas() {
@@ -218,164 +186,15 @@
     flash('旅行节点已保存');
   }
 
-  function startMovie(viewport: { width: number; height: number }) {
-    if (visibleVisits.length === 0) return;
-    movieEngine = new MovieEngine({
-      visits: plottedVisits,
-      legs: visibleLegs,
-      viewportWidth: viewport.width,
-      viewportHeight: viewport.height
-    });
-    movieActive = true;
-    moviePaused = false;
-    movieComplete = false;
-    movieFrame = movieEngine.setElapsedMs(0);
-    lastMovieTick = performance.now();
-    movieRaf = requestAnimationFrame(runMovieLoop);
-  }
-
-  function handleMovieViewport(viewport: { width: number; height: number }) {
-    if (!movieActive || !movieEngine) return;
-    movieEngine.setViewport(viewport.width, viewport.height);
-    movieFrame = movieEngine.setElapsedMs(movieEngine.getElapsedMs());
-  }
-
-  function runMovieLoop(now = performance.now()) {
-    if (!movieActive || !movieEngine || moviePaused || movieExporting) return;
-
-    const delta = now - lastMovieTick;
-    lastMovieTick = now;
-    movieFrame = movieEngine.setElapsedMs(movieEngine.getElapsedMs() + delta);
-
-    if (movieEngine.isComplete()) {
-      moviePaused = true;
-      movieComplete = true;
-      return;
-    }
-
-    movieRaf = requestAnimationFrame(runMovieLoop);
-  }
-
-  function toggleMoviePause() {
-    if (!movieActive || movieExporting) return;
-    moviePaused = !moviePaused;
-    if (!moviePaused) {
-      lastMovieTick = performance.now();
-      movieRaf = requestAnimationFrame(runMovieLoop);
-    } else {
-      cancelAnimationFrame(movieRaf);
-    }
-  }
-
-  function seekMovie(progress: number) {
-    if (!movieEngine) return;
-    movieFrame = movieEngine.setElapsedMs(progress * movieEngine.totalDuration);
-    movieComplete = movieEngine.isComplete();
-    moviePaused = movieComplete;
-    if (!moviePaused && movieActive) {
-      lastMovieTick = performance.now();
-      cancelAnimationFrame(movieRaf);
-      movieRaf = requestAnimationFrame(runMovieLoop);
-    }
-  }
-
-  function stopMovie() {
-    if (movieExporting) {
-      exportAbort?.abort();
-      return;
-    }
-    movieActive = false;
-    moviePaused = false;
-    movieComplete = false;
-    movieFrame = null;
-    movieEngine = null;
-    cancelAnimationFrame(movieRaf);
-  }
-
-  async function exportMovie() {
-    if (!movieEngine || !movieSvg || movieExporting || !movieCanExport) return;
-
-    movieExporting = true;
-    movieExportProgress = 0;
-    moviePaused = true;
-    cancelAnimationFrame(movieRaf);
-    exportAbort = new AbortController();
-
-    const { width, height } = computeExportSize(movieSvg.clientWidth, movieSvg.clientHeight);
-
-    try {
-      const blob = await recordMovieVideo({
-        svg: movieSvg,
-        totalDuration: movieEngine.totalDuration,
-        width,
-        height,
-        signal: exportAbort.signal,
-        onFrame: async (elapsedMs) => {
-          movieFrame = movieEngine!.setElapsedMs(elapsedMs);
-          await tick();
-          const visit = plottedVisits[movieFrame.activeVisitIndex];
-          if (!visit || movieFrame.phase !== 'dwell') return { caption: null };
-          return {
-            caption: {
-              title: `${visit.location.name} · ${formatMonth(visit.arrivedAt)}`,
-              body: visit.feeling || '未记录感受',
-              opacity: movieFrame.dwellCaptionOpacity
-            }
-          };
-        },
-        onProgress: (progress) => {
-          movieExportProgress = progress;
-        }
-      });
-      downloadBlob(blob, buildExportFilename(plottedVisits, selectedYear));
-      flash('视频已导出');
-    } catch (exportError) {
-      if (exportError instanceof DOMException && exportError.name === 'AbortError') {
-        flash('已取消导出');
-      } else {
-        flash(exportError instanceof Error ? exportError.message : '导出失败，请重试');
-      }
-    } finally {
-      movieExporting = false;
-      movieExportProgress = 0;
-      exportAbort = null;
-      moviePaused = movieEngine.isComplete();
-      if (movieActive && !moviePaused) {
-        lastMovieTick = performance.now();
-        movieRaf = requestAnimationFrame(runMovieLoop);
-      }
-    }
-  }
-
   async function openPosterPreview() {
     if (!canGeneratePoster || typeof selectedYear !== 'number') return;
-
-    posterPreviewOpen = true;
-    posterGenerating = true;
-    posterBlob = null;
-    posterError = '';
-    posterFilename = buildPosterFilename(selectedYear);
-
-    try {
-      posterBlob = await generatePoster({
-        year: selectedYear,
-        yearColor: yearColors[String(selectedYear)] || '#2d7c89',
-        visits: visibleVisits,
-        legs: visibleLegs,
-        yearColors
-      });
-    } catch (posterErr) {
-      posterError = posterErr instanceof Error ? posterErr.message : '海报生成失败，请重试';
-    } finally {
-      posterGenerating = false;
-    }
-  }
-
-  function closePosterPreview() {
-    if (posterGenerating) return;
-    posterPreviewOpen = false;
-    posterBlob = null;
-    posterError = '';
+    await poster.open({
+      year: selectedYear,
+      yearColor: yearColors[String(selectedYear)] || '#2d7c89',
+      visits: visibleVisits,
+      legs: visibleLegs,
+      yearColors
+    });
   }
 
   function openStatsView() {
@@ -490,31 +309,31 @@
     visitRoutes={visibleVisitRoutes}
     yearColors={yearColors}
     selectedVisitId={selectedVisit?.id ?? null}
-    movieMode={movieActive}
-    movieFrame={movieFrame}
-    movieActiveLeg={movieActiveLeg}
+    movieMode={$movie.active}
+    movieFrame={$movie.frame}
+    movieActiveLeg={$movie.activeLeg}
     onSelectVisit={selectVisit}
     onCreate={openCreate}
-    onStartMovie={startMovie}
-    onViewportChange={handleMovieViewport}
+    onStartMovie={movie.start}
+    onViewportChange={movie.setViewport}
     on:svgready={(event) => {
-      movieSvg = event.detail;
+      movie.setSvg(event.detail);
     }}
   />
 
-  {#if movieActive}
+  {#if $movie.active}
     <MovieOverlay
-      movieFrame={movieFrame}
+      movieFrame={$movie.frame}
       visits={plottedVisits}
-      paused={moviePaused}
-      complete={movieComplete}
-      exporting={movieExporting}
-      exportProgress={movieExportProgress}
-      canExport={movieCanExport}
-      onTogglePause={toggleMoviePause}
-      onExit={stopMovie}
-      onSeek={seekMovie}
-      onExport={exportMovie}
+      paused={$movie.paused}
+      complete={$movie.complete}
+      exporting={$movie.exporting}
+      exportProgress={$movie.exportProgress}
+      canExport={movie.canExport()}
+      onTogglePause={movie.togglePause}
+      onExit={movie.stop}
+      onSeek={movie.seek}
+      onExport={movie.exportVideo}
     />
   {/if}
 
@@ -533,7 +352,7 @@
     />
   {/if}
 
-  {#if !movieActive && activeView === 'map'}
+  {#if !$movie.active && activeView === 'map'}
   <aside class="atlas-sidebar glass-panel" aria-label="旅行图谱">
     <div class="brand-row">
       <div class="brand-mark">
@@ -686,12 +505,12 @@
   {/if}
 
   <PosterPreview
-    open={posterPreviewOpen}
-    generating={posterGenerating}
-    blob={posterBlob}
-    filename={posterFilename}
-    error={posterError}
-    onClose={closePosterPreview}
+    open={$poster.open}
+    generating={$poster.generating}
+    blob={$poster.blob}
+    filename={$poster.filename}
+    error={$poster.error}
+    onClose={poster.close}
   />
 
   <ConfirmDialog />
