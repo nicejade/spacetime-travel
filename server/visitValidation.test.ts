@@ -56,3 +56,44 @@ describe('assertDateOrder', () => {
     assertHttpError(() => assertDateOrder('2024-01-10', '2024-01-09'), 400, '离开时间不能早于到达时间');
   });
 });
+
+describe('parseTransport', () => {
+  it('accepts all whitelist values', () => {
+    for (const t of TRANSPORTS) {
+      assert.equal(parseTransport(t, { label: '去程交通方式', fallback: 'flight' }), t);
+    }
+  });
+
+  it('uses fallback when empty', () => {
+    assert.equal(parseTransport('', { label: '去程交通方式', fallback: 'flight' }), 'flight');
+    assert.equal(parseTransport(undefined, { label: '去程交通方式', fallback: 'flight' }), 'flight');
+  });
+
+  it('allows empty when allowEmpty', () => {
+    assert.equal(parseTransport('', { label: '返程交通方式', allowEmpty: true }), null);
+    assert.equal(parseTransport('  ', { label: '站间交通方式', allowEmpty: true }), null);
+  });
+
+  it('rejects unknown transport', () => {
+    assertHttpError(
+      () => parseTransport('teleport', { label: '去程交通方式', fallback: 'flight' }),
+      400,
+      '去程交通方式无效'
+    );
+  });
+});
+
+describe('parseVisitId', () => {
+  it('parses positive integer string', () => {
+    assert.equal(parseVisitId('42'), 42);
+  });
+
+  it('rejects non-numeric', () => {
+    assertHttpError(() => parseVisitId('abc'), 400, '访问 ID 无效');
+  });
+
+  it('rejects zero and negative', () => {
+    assertHttpError(() => parseVisitId('0'), 400, '访问 ID 无效');
+    assertHttpError(() => parseVisitId('-1'), 400, '访问 ID 无效');
+  });
+});
