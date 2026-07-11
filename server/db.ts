@@ -6,6 +6,7 @@ import { ensureLocation, purgeOrphanLocations } from './locations.js';
 import { migrate } from './migrations.js';
 import { rebuildSequencesAndLegs } from './rebuildLegs.js';
 import type { HttpError, ParsedVisitPayload, VisitPayloadInput } from './types.js';
+import { assertDateOrder, parseIsoDate, parseTransport } from './visitValidation.js';
 import { buildVisitRoutes } from './visitRoutes.js';
 
 function httpError(status: number, message: string): HttpError {
@@ -557,7 +558,7 @@ function cleanNumber(value: unknown, fallback: number | null = null): number | n
 }
 
 function cleanRating(value: unknown): number {
-  const rating = cleanNumber(value, 4) ?? 4;
+  const rating = cleanNumber(value, 4.5) ?? 4.5;
   return Math.max(1, Math.min(5, Number(rating.toFixed(1))));
 }
 
@@ -602,25 +603,42 @@ function readVisitPayload(payload: VisitPayloadInput): ParsedVisitPayload {
   }
 
   const returnsToOrigin = payload.returnsToOrigin !== false;
-  const returnTransport = returnsToOrigin ? cleanString(payload.returnTransport) || null : null;
+  const arrivedAt = parseIsoDate(payload.arrivedAt, '到达时间');
+  const departedRaw = typeof payload.departedAt === 'string' ? payload.departedAt.trim() : '';
+  const departedAt = departedRaw ? parseIsoDate(departedRaw, '离开时间') : null;
+  assertDateOrder(arrivedAt, departedAt);
+
+  const outboundTransport = parseTransport(payload.outboundTransport, {
+    label: '去程交通方式',
+    fallback: 'flight'
+  }) as string;
+
+  const returnTransport = returnsToOrigin
+    ? parseTransport(payload.returnTransport, { label: '返程交通方式', allowEmpty: true })
+    : null;
+
+  const inboundTransport = parseTransport(payload.inboundTransport, {
+    label: '站间交通方式',
+    allowEmpty: true
+  });
 
   return {
     locationName: destination.name,
     country: destination.country,
     lat: destination.lat,
     lng: destination.lng,
-    arrivedAt: requireText(payload, 'arrivedAt', '到达时间'),
-    departedAt: cleanString(payload.departedAt) || null,
+    arrivedAt,
+    departedAt,
     originName: origin.name,
     originCountry: origin.country,
     originLat: origin.lat,
     originLng: origin.lng,
     returnsToOrigin,
-    outboundTransport: cleanString(payload.outboundTransport, 'flight'),
+    outboundTransport,
     outboundNote: cleanString(payload.outboundNote),
     returnNote: cleanString(payload.returnNote),
     returnTransport,
-    inboundTransport: cleanString(payload.inboundTransport) || null,
+    inboundTransport,
     inboundNote: cleanString(payload.inboundNote),
     feeling: cleanString(payload.feeling),
     food: cleanString(payload.food),
