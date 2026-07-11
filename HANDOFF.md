@@ -320,7 +320,7 @@
 | P5-3 | 时间轴真实比例 / 回忆胶卷 | 按时间比例刻度 + 窗口过滤 | 前端为主 |
 | P5-4 | 节点拖拽手动排序 | 若允许 `sequence` 偏离 `arrived_at` 需改 P0-4 决策；当前 sequence 仅为日期序缓存 | 与 P0-4 已记录决策绑定 |
 | P5-5 | 键盘快捷键 | `+`/`-`/`0`、空格、`N`、方向键切站 | 电影模式已用 Space/Esc，需统一 |
-| P5-6 | 双击地图空白新建 | 带入点击坐标 | LocationPicker/投影已具备 |
+| P5-6 | 双击地图空白新建 | ~~已完成（2026-07-11）~~ 双击空白预填 lat/lng/country 打开 VisitForm；电影模式忽略 | LocationPicker/投影已具备 |
 | P5-7 | 移动端 pinch zoom | 现有 `touch-action: none` 无 pinch | TravelCanvas |
 | P5-8 | 标签碰撞 / zoom 分级显隐 | 低倍率减文字重叠 | TravelCanvas |
 | P5-9 | 选中态强化相邻路段 | 按年弱化其余轨迹 | TravelCanvas |
@@ -367,6 +367,7 @@
 | TransportSelect 动态图标 | 去掉弃用的 `svelte:component` |
 | CI typecheck + test | `.github/workflows/ci.yml`（pnpm + Node 22） |
 | pan/zoom + plotVisits 去重 | `panForZoomAt` / `clampContainedPan`；App→Canvas 传 plottedVisits |
+| 双击地图空白新建 | `pickLonLatAt`；预填坐标打开 VisitForm |
 
 ---
 
@@ -393,7 +394,8 @@
 | 17 | ~~TransportSelect 去 svelte:component~~ | ~~P4-6~~ |
 | 18 | ~~CI typecheck + test~~ | ~~P5-13~~ |
 | 19 | ~~pan/zoom + plotVisits 去重~~ | ~~P4-3~~ |
-| 20 | 产品增强按需 | P5-* |
+| 20 | ~~双击地图空白新建~~ | ~~P5-6~~ |
+| 21 | 产品增强按需 | P5-* |
 
 ---
 
@@ -427,6 +429,7 @@
   client/lib/visitPayload.test.ts
   client/lib/map/clampPan.test.ts
   client/lib/map/panZoom.test.ts
+  client/lib/map/pickLonLat.test.ts
   client/lib/poster/preview.test.ts
   shared/years.test.ts
   ```

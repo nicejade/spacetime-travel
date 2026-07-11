@@ -6,6 +6,7 @@
   import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator, projection } from '$lib/geo';
   import { clampMapPan } from '$lib/map/clampPan';
   import { panForZoomAt } from '$lib/map/panZoom';
+  import { pickLonLatAt, type LonLatPick } from '$lib/map/pickLonLat';
   import { plotOrigins } from '$lib/map/plotOrigins';
   import { buildRouteGeometry } from '$lib/movie/pathSampler';
   import type { PlottedVisit } from '$lib/movie/types';
@@ -22,6 +23,7 @@
   export let movieActiveLeg: { fromVisitId: number; toVisitId: number } | null = null;
   export let onSelectVisit: (id: number) => void = () => {};
   export let onCreate: () => void = () => {};
+  export let onCreateAt: (place: LonLatPick) => void = () => {};
   export let onStartMovie: (viewport: { width: number; height: number }) => void = () => {};
   export let onViewportChange: (viewport: { width: number; height: number }) => void = () => {};
 
@@ -234,6 +236,21 @@
     setControlStatus('New visit');
   }
 
+  function handleCanvasDblClick(event: MouseEvent) {
+    if (movieMode) return;
+    if (event.target instanceof Element) {
+      if (event.target.closest('.visit-node') || event.target.closest('.canvas-controls')) return;
+    }
+    const rect = shell.getBoundingClientRect();
+    const picked = pickLonLatAt(
+      { x: event.clientX - rect.left, y: event.clientY - rect.top },
+      { pan: displayPan, scale: displayScale }
+    );
+    if (!picked) return;
+    onCreateAt(picked);
+    setControlStatus('New visit from map');
+  }
+
   function stopControlEvent(event: Event) {
     event.stopPropagation();
   }
@@ -257,6 +274,7 @@
   on:pointermove={movePan}
   on:pointerup={endPan}
   on:pointercancel={endPan}
+  on:dblclick={handleCanvasDblClick}
 >
   <svg
     bind:this={worldStage}

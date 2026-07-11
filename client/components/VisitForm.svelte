@@ -5,10 +5,12 @@
   import TransportSelect from './TransportSelect.svelte';
   import { createVisit, updateVisit } from '$lib/api';
   import { focusTrap } from '$lib/focusTrap';
+  import type { LonLatPick } from '$lib/map/pickLonLat';
   import type { Location, Transport, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
 
   export let mode: 'create' | 'edit' = 'create';
   export let visit: Visit | null = null;
+  export let initialPlace: LonLatPick | null = null;
   export let originSuggestions: Location[] = [];
   export let showInboundFields = false;
   export let onClose: () => void = () => {};
@@ -19,7 +21,7 @@
   let lastKey = '';
   let values: VisitPayload = buildValues();
 
-  $: key = `${mode}:${visit?.id ?? 'new'}`;
+  $: key = `${mode}:${visit?.id ?? 'new'}:${initialPlace ? `${initialPlace.lat},${initialPlace.lng}` : ''}`;
   $: if (key !== lastKey) {
     values = buildValues();
     error = '';
@@ -58,9 +60,9 @@
 
     return {
       locationName: '',
-      country: '',
-      lat: '',
-      lng: '',
+      country: initialPlace?.country || '',
+      lat: initialPlace?.lat ?? '',
+      lng: initialPlace?.lng ?? '',
       originName: '',
       originCountry: '',
       originLat: '',

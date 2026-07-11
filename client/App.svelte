@@ -31,6 +31,7 @@
   import { visitToPayload } from '$lib/visitPayload';
   import { yearAfterSave } from '$lib/yearFilter';
   import { visitYear } from '$lib/years';
+  import type { LonLatPick } from '$lib/map/pickLonLat';
 
   let atlas: Atlas | null = null;
   let loading = true;
@@ -41,6 +42,7 @@
   let editorOpen = false;
   let editorMode: 'create' | 'edit' = 'create';
   let editingVisit: Visit | null = null;
+  let createPrefill: LonLatPick | null = null;
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   let activeView: 'map' | 'stats' = 'map';
   let statsYear: number | 'all' = 'all';
@@ -150,20 +152,23 @@
     selectedVisitId = id;
   }
 
-  function openCreate() {
+  function openCreate(prefill: LonLatPick | null = null) {
     editorMode = 'create';
     editingVisit = null;
+    createPrefill = prefill;
     editorOpen = true;
   }
 
   function openEdit(visit: Visit) {
     editorMode = 'edit';
     editingVisit = visit;
+    createPrefill = null;
     editorOpen = true;
   }
 
   function closeEditor() {
     editorOpen = false;
+    createPrefill = null;
   }
 
   function flash(message: string, options?: { undo?: VisitPayload }) {
@@ -187,6 +192,7 @@
       selectedYear = yearAfterSave(selectedYear, saved.arrivedAt);
     }
     editorOpen = false;
+    createPrefill = null;
     flash('旅行节点已保存');
   }
 
@@ -318,6 +324,7 @@
     movieActiveLeg={$movie.activeLeg}
     onSelectVisit={selectVisit}
     onCreate={openCreate}
+    onCreateAt={(place) => openCreate(place)}
     onStartMovie={movie.start}
     onViewportChange={movie.setViewport}
     on:svgready={(event) => {
@@ -462,7 +469,7 @@
     </div>
 
     <div class="sidebar-actions">
-      <button type="button" class="primary-button" on:click={openCreate}>
+      <button type="button" class="primary-button" on:click={() => openCreate()}>
         <Plus size={17} />新增节点
       </button>
       <button type="button" class="icon-button" aria-label="刷新旅行数据" title="刷新" on:click={loadAtlas}>
@@ -510,6 +517,7 @@
     <VisitForm
       mode={editorMode}
       visit={editingVisit}
+      initialPlace={createPrefill}
       originSuggestions={atlas?.originSuggestions ?? []}
       showInboundFields={editorMode === 'edit' && editingVisit ? editingVisit.sequence > 1 : visits.length > 0}
       onClose={closeEditor}
