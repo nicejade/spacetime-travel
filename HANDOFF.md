@@ -325,7 +325,7 @@
 | P5-10 | 详情面板切换过渡 | 「飞到下一站」感 | TripPanel |
 | P5-11 | Stats 交通/里程深化 | 心情天气分布等 | 依赖 P0-3 |
 | P5-12 | Playwright 主链路 E2E | 创建→地图→编辑→删除 | 依赖 P1-3 |
-| P5-13 | CI：typecheck + test | GitHub Actions 等 | 依赖 P1-3、P1-5 |
+| P5-13 | CI：typecheck + test | ~~已完成（2026-07-11）~~ `.github/workflows/ci.yml`：push/PR → `pnpm typecheck` + `pnpm test` | 依赖 P1-3、P1-5 |
 | P5-14 | 鉴权 / 多用户 | 当前明确单机无鉴权；公网 `0.0.0.0` 有风险 | 仅在部署模型变化时做 |
 
 ---
@@ -363,6 +363,7 @@
 | UX 小一致性 | 保存保留年份；notice/error 分槽；TimelineStrip aria-current；地图重试 |
 | gazetteer normalize | 中英搜索统一 `normalize`；`matchPlaces` + 单测 |
 | TransportSelect 动态图标 | 去掉弃用的 `svelte:component` |
+| CI typecheck + test | `.github/workflows/ci.yml`（pnpm + Node 22） |
 
 ---
 
@@ -387,7 +388,8 @@
 | 15 | ~~UX 小一致性~~ | ~~P3-7~~ |
 | 16 | ~~gazetteer normalize 统一~~ | ~~P3-8~~ |
 | 17 | ~~TransportSelect 去 svelte:component~~ | ~~P4-6~~ |
-| 18 | pan/zoom 去重 / CI / 产品增强 | P4-3, P5-13, P5-* |
+| 18 | ~~CI typecheck + test~~ | ~~P5-13~~ |
+| 19 | pan/zoom 去重 / 产品增强 | P4-3, P5-* |
 
 ---
 

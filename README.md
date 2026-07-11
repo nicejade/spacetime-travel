@@ -114,6 +114,8 @@ pnpm test
 
 Runs unit tests under `server/` and `client/`.
 
+CI (GitHub Actions) runs `pnpm typecheck` and `pnpm test` on pushes to `main` / `feat/**` and on pull requests.
+
 ```bash
 pnpm smoke:visit-origin
 ```
