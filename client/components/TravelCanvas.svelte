@@ -5,6 +5,7 @@
   import { formatMonth, transportClass, transportDash } from '$lib/format';
   import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator, projection } from '$lib/geo';
   import { clampMapPan } from '$lib/map/clampPan';
+  import { legHighlight, visitRouteOpacity } from '$lib/map/legHighlight';
   import { panForZoomAt } from '$lib/map/panZoom';
   import { pickLonLatAt, type LonLatPick } from '$lib/map/pickLonLat';
   import { plotOrigins } from '$lib/map/plotOrigins';
@@ -205,9 +206,11 @@
     return to?.yearColor || '#2d7c89';
   }
 
-  function isActiveLeg(leg: Leg) {
-    if (!movieActiveLeg) return false;
-    return leg.fromVisitId === movieActiveLeg.fromVisitId && leg.toVisitId === movieActiveLeg.toVisitId;
+  function routeLineClass(leg: Leg) {
+    const highlight = legHighlight(leg, selectedVisitId, movieMode, movieActiveLeg);
+    const highlightClass =
+      highlight === 'active' ? 'route-active' : highlight === 'dimmed' ? 'route-dimmed' : '';
+    return `route-line ${transportClass(leg.transport)} ${highlightClass}`.trim();
   }
 
   function focusVisit(visit: (typeof plottedVisits)[number], targetScale = Math.max(scale, 0.86)) {
@@ -321,7 +324,7 @@
             class={`visit-route visit-route-${route.kind} ${transportClass(route.transport)}`}
             d={buildLocationRoute(route, index)}
             stroke-dasharray={route.kind === 'return' ? '4 6' : transportDash(route.transport)}
-            opacity={route.kind === 'return' ? 0.2 : 0.3}
+            opacity={visitRouteOpacity(route.visitId, route.kind, selectedVisitId, movieMode)}
           />
         {/each}
       </g>
@@ -329,7 +332,7 @@
       <g class="trip-routes">
         {#each legs as leg, index (leg.id)}
           <path
-            class={`route-line ${transportClass(leg.transport)} ${movieMode ? (isActiveLeg(leg) ? 'route-active' : 'route-dimmed') : ''}`}
+            class={routeLineClass(leg)}
             style={`--trip-color: ${legColor(leg)}; stroke: var(--trip-color)`}
             d={routePath(leg, index)}
             stroke-dasharray={transportDash(leg.transport)}

@@ -323,7 +323,7 @@
 | P5-6 | 双击地图空白新建 | ~~已完成（2026-07-11）~~ 双击空白预填 lat/lng/country 打开 VisitForm；电影模式忽略 | LocationPicker/投影已具备 |
 | P5-7 | 移动端 pinch zoom | 现有 `touch-action: none` 无 pinch | TravelCanvas |
 | P5-8 | 标签碰撞 / zoom 分级显隐 | 低倍率减文字重叠 | TravelCanvas |
-| P5-9 | 选中态强化相邻路段 | 按年弱化其余轨迹 | TravelCanvas |
+| P5-9 | 选中态强化相邻路段 | ~~已完成（2026-07-11）~~ 选中节点高亮相邻 leg、弱化其余；去程/回程随选中调透明度 | TravelCanvas |
 | P5-10 | 详情面板切换过渡 | 「飞到下一站」感 | TripPanel |
 | P5-11 | Stats 交通/里程深化 | 心情天气分布等 | 依赖 P0-3 |
 | P5-12 | Playwright 主链路 E2E | 创建→地图→编辑→删除 | 依赖 P1-3 |
@@ -368,6 +368,7 @@
 | CI typecheck + test | `.github/workflows/ci.yml`（pnpm + Node 22） |
 | pan/zoom + plotVisits 去重 | `panForZoomAt` / `clampContainedPan`；App→Canvas 传 plottedVisits |
 | 双击地图空白新建 | `pickLonLatAt`；预填坐标打开 VisitForm |
+| 选中态相邻路段 | `legHighlight`；选中高亮相邻 leg，弱化其余 |
 
 ---
 
@@ -395,7 +396,8 @@
 | 18 | ~~CI typecheck + test~~ | ~~P5-13~~ |
 | 19 | ~~pan/zoom + plotVisits 去重~~ | ~~P4-3~~ |
 | 20 | ~~双击地图空白新建~~ | ~~P5-6~~ |
-| 21 | 产品增强按需 | P5-* |
+| 21 | ~~选中态强化相邻路段~~ | ~~P5-9~~ |
+| 22 | 产品增强按需 | P5-* |
 
 ---
 
@@ -430,6 +432,7 @@
   client/lib/map/clampPan.test.ts
   client/lib/map/panZoom.test.ts
   client/lib/map/pickLonLat.test.ts
+  client/lib/map/legHighlight.test.ts
   client/lib/poster/preview.test.ts
   shared/years.test.ts
   ```
