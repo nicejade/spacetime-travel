@@ -31,7 +31,7 @@ export interface Place {
 let cache: Promise<Place[]> | null = null;
 
 /** Lowercase, trim, and strip combining diacritics for lenient matching. */
-function normalize(value: string): string {
+export function normalize(value: string): string {
   return value
     .trim()
     .toLowerCase()
@@ -60,28 +60,27 @@ export function loadGazetteer(): Promise<Place[]> {
 }
 
 /**
- * Search places by Chinese name, English name, or country name.
- * Prefix matches rank first, then higher population.
+ * Rank places against a query. Chinese and English fields share the same
+ * normalize path so casing / diacritics behave consistently.
  */
-export async function searchPlaces(query: string, limit = 8): Promise<Place[]> {
+export function matchPlaces(places: Place[], query: string, limit = 8): Place[] {
   const q = normalize(query);
   if (!q) return [];
 
-  const places = await loadGazetteer();
   const scored: { place: Place; score: number }[] = [];
 
   for (const place of places) {
-    const zh = place.nameZh;
+    const zh = normalize(place.nameZh);
     const en = normalize(place.nameEn);
-    const countryZh = place.country;
+    const countryZh = normalize(place.country);
     const countryEn = normalize(place.countryCode);
 
     let score = -1;
-    if (zh.startsWith(query.trim()) || en.startsWith(q)) {
+    if (zh.startsWith(q) || en.startsWith(q)) {
       score = 3;
-    } else if (zh.includes(query.trim()) || en.includes(q)) {
+    } else if (zh.includes(q) || en.includes(q)) {
       score = 2;
-    } else if (countryZh.includes(query.trim()) || countryEn.includes(q)) {
+    } else if (countryZh.includes(q) || countryEn.includes(q)) {
       score = 1;
     }
 
@@ -90,4 +89,13 @@ export async function searchPlaces(query: string, limit = 8): Promise<Place[]> {
 
   scored.sort((a, b) => b.score - a.score || b.place.population - a.place.population);
   return scored.slice(0, limit).map((entry) => entry.place);
+}
+
+/**
+ * Search places by Chinese name, English name, or country name.
+ * Prefix matches rank first, then higher population.
+ */
+export async function searchPlaces(query: string, limit = 8): Promise<Place[]> {
+  const places = await loadGazetteer();
+  return matchPlaces(places, query, limit);
 }

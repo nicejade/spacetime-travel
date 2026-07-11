@@ -251,10 +251,10 @@
 
 ### P3-8 · gazetteer 搜索小优化
 
-- **问题**：6244 条线性扫描可接受；中英文 normalize 不一致（`gazetteer.ts` ~80–84）；文件 559KB 略超 spec 500KB。
-- **建议做法**：统一 normalize；可选简单前缀索引；人口阈值微调压体积（可选）。
-- **验收**：中英文搜索体验一致；首搜仍懒加载。
-- **依赖**：无。
+- **状态**：~~已完成（2026-07-11，方案 A）~~
+- **实现**：抽出 `matchPlaces`；中英/国家字段统一走 `normalize`；`searchPlaces` 仍懒加载后调用。
+- **测试**：`client/lib/gazetteer.test.ts`
+- **未做**：前缀索引；抬高人口阈值压 `gazetteer.json` 体积。
 
 ---
 
@@ -362,6 +362,7 @@
 | resolveLegs Map 索引 | 电影模式 leg 解析 O(n+m)；`engine.test.ts` |
 | 模态 focus trap | `focusTrap` action；VisitForm / ConfirmDialog Tab 循环 + Esc |
 | UX 小一致性 | 保存保留年份；notice/error 分槽；TimelineStrip aria-current；地图重试 |
+| gazetteer normalize | 中英搜索统一 `normalize`；`matchPlaces` + 单测 |
 
 ---
 
@@ -384,7 +385,7 @@
 | 13 | ~~resolveLegs Map 索引~~ | ~~P3-3~~ |
 | 14 | ~~模态 focus trap~~ | ~~P3-6~~ |
 | 15 | ~~UX 小一致性~~ | ~~P3-7~~ |
-| 16 | gazetteer 搜索优化 | P3-8 |
+| 16 | ~~gazetteer normalize 统一~~ | ~~P3-8~~ |
 | 17 | 产品增强按需 | P5-* |
 
 ---
@@ -415,6 +416,7 @@
   client/lib/movie/engine.test.ts
   client/lib/focusTrap.test.ts
   client/lib/yearFilter.test.ts
+  client/lib/gazetteer.test.ts
   client/lib/visitPayload.test.ts
   client/lib/map/clampPan.test.ts
   client/lib/poster/preview.test.ts
