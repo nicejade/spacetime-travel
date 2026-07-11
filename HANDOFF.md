@@ -107,19 +107,12 @@
 
 ### P0-4 · `rebuildSequencesAndLegs` 性能与一致性
 
-- **问题**：
-  - 每次写操作 `DELETE FROM legs` 全量重建；循环内 `db.prepare`（N+1）（~724–760）。
-  - `visits.sequence` 与 `ORDER BY arrived_at, id` 等价，除非要做手动拖拽排序，否则是冗余缓存。
-  - `legs.created_at` / `updated_at` 因反复重建无意义。
-- **位置**：`server/db.ts` `rebuildSequencesAndLegs`。
-- **建议做法**：
-  1. 循环外预 prepare；可用单条 SQL 批量更新 sequence。
-  2. 明确产品决策：是否保留手动拖拽排序。
-     - 若不需要：可评估删除 `visits.sequence` 列，查询统一 `ORDER BY arrived_at, id`（需迁移）。
-     - 若需要：保留 sequence，并另开产品项做拖拽 UI。
-  3. （可选）将 legs 改为读时计算，与 `visitRoutes` 对齐——大改，单独评估。
-- **验收**：100+ visits 下 create/update 无明显变慢；sequence 与 arrived_at 顺序一致；测试覆盖插入中间日期后的重排。
-- **依赖**：改 schema 时依赖 P0-1；纯优化 prepare 可独立。
+- **状态**：~~已完成（2026-07-11）~~
+- **产品决策**：保留 `visits.sequence` 作为 `arrived_at ASC, id ASC` 的**派生缓存**；不做手动拖拽偏离日期序（拖拽排序仍属 P5-4）。不把 legs 改为纯读时计算。
+- **实现**：
+  - 抽出 `server/rebuildLegs.ts`：一次 JOIN 拉取有序 visits+坐标；`ROW_NUMBER()` 单语句重写 sequence；事务批量 insert legs（含 distance）
+  - 消除重建路径上的 per-row `prepare` / inbound·坐标 N+1
+  - 测试：`server/rebuildLegs.test.ts`（中间插入重排、删除补边）
 
 ### P0-5 · 写入校验加固
 
@@ -362,7 +355,7 @@
 | P5-1 | 照片 / 媒体附件 | 本地 `data/media/`，DB 存路径；详情缩略图、hover 首图 | 需迁移；导出导入要带文件或打包格式 |
 | P5-2 | 标签主题地图 | `tags` 逗号串 → `tags` + `visit_tags` 表；点击过滤高亮 | **必须 P0-1**；改 tags 模型 |
 | P5-3 | 时间轴真实比例 / 回忆胶卷 | 按时间比例刻度 + 窗口过滤 | 前端为主 |
-| P5-4 | 节点拖拽手动排序 | 若保留 `sequence` 并允许偏离 `arrived_at` | 与 P0-4 产品决策绑定 |
+| P5-4 | 节点拖拽手动排序 | 若允许 `sequence` 偏离 `arrived_at` 需改 P0-4 决策；当前 sequence 仅为日期序缓存 | 与 P0-4 已记录决策绑定 |
 | P5-5 | 键盘快捷键 | `+`/`-`/`0`、空格、`N`、方向键切站 | 电影模式已用 Space/Esc，需统一 |
 | P5-6 | 双击地图空白新建 | 带入点击坐标 | LocationPicker/投影已具备 |
 | P5-7 | 移动端 pinch zoom | 现有 `touch-action: none` 无 pinch | TravelCanvas |
@@ -393,6 +386,7 @@
 | FK 列索引 | 迁移 1：`idx_visits_location_id` 等四条 |
 | locations 实体化 | `ensureLocation` 复用、`purgeOrphanLocations`、迁移 2 去重 + `idx_locations_name_country` |
 | legs 大圆距离 | Haversine 写入 `distance_km`；Stats 总里程 + 交通里程 |
+| legs/sequence 重建优化 | `rebuildLegs.ts`：窗口函数写 sequence + 单次 JOIN 批量建 leg |
 
 ---
 
@@ -403,15 +397,16 @@
 | 1 | ~~Schema 迁移骨架 + FK 索引~~ | ~~P0-1, P0-6~~ |
 | 2 | ~~locations 实体化 + 测试~~ | ~~P0-2~~ |
 | 3 | ~~legs 距离 + Stats 里程~~ | ~~P0-3~~ |
-| 4 | 写入校验 | P0-5, P3-5 |
-| 5 | 文档 + gitignore + scripts | P1-1, P1-2, P1-3, P4-4 |
-| 6 | Smoke 隔离 + db/movie 单测 | P1-4, P1-5 |
-| 7 | JSON 导出导入 | P2-1 |
-| 8 | 删除撤销 | P2-2 |
-| 9 | pan clamp + 电影 viewport + path 预计算 | P3-1, P3-2, P3-4 |
-| 10 | 共享 years / server 类型边界 | P1-6, P1-7 |
-| 11 | 前端拆分或 runes（选其一） | P4-1 或 P4-2 |
-| 12 | 产品增强按需 | P5-* |
+| 4 | ~~rebuildSequencesAndLegs 优化~~ | ~~P0-4~~ |
+| 5 | 写入校验 | P0-5, P3-5 |
+| 6 | 文档 + gitignore + scripts | P1-1, P1-2, P1-3, P4-4 |
+| 7 | Smoke 隔离 + db/movie 单测 | P1-4, P1-5 |
+| 8 | JSON 导出导入 | P2-1 |
+| 9 | 删除撤销 | P2-2 |
+| 10 | pan clamp + 电影 viewport + path 预计算 | P3-1, P3-2, P3-4 |
+| 11 | 共享 years / server 类型边界 | P1-6, P1-7 |
+| 12 | 前端拆分或 runes（选其一） | P4-1 或 P4-2 |
+| 13 | 产品增强按需 | P5-* |
 
 ---
 
@@ -429,6 +424,7 @@
   node --import tsx --test server/locations.test.ts
   node --import tsx --test server/haversine.test.ts
   node --import tsx --test server/legDistance.test.ts
+  node --import tsx --test server/rebuildLegs.test.ts
   node --import tsx --test server/visitRoutes.test.ts
   node --import tsx --test client/lib/stats/compute.test.ts
   node --import tsx scripts/smoke-visit-origin.mjs   # 会写真实 DB，见 P1-4

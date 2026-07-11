@@ -2,9 +2,9 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { distanceBetweenKm, visitDestinationCoords } from './haversine.js';
 import { ensureLocation, purgeOrphanLocations } from './locations.js';
 import { migrate } from './migrations.js';
+import { rebuildSequencesAndLegs } from './rebuildLegs.js';
 import type { HttpError, ParsedVisitPayload, VisitPayloadInput } from './types.js';
 import { buildVisitRoutes } from './visitRoutes.js';
 
@@ -378,17 +378,6 @@ const insertVisit = db.prepare(`
   )
 `);
 
-const insertLeg = db.prepare(`
-  INSERT INTO legs (
-    from_visit_id, to_visit_id, transport, duration_hours,
-    distance_km, note, sequence
-  )
-  VALUES (
-    @fromVisitId, @toVisitId, @transport, @durationHours,
-    @distanceKm, @note, @sequence
-  )
-`);
-
 const seedDatabase = db.transaction(() => {
   const ordered = [...seedVisits].sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt));
 
@@ -428,7 +417,7 @@ const seedDatabase = db.transaction(() => {
     });
   });
 
-  rebuildSequencesAndLegs();
+  rebuildSequencesAndLegs(db);
 });
 
 if ((db.prepare('SELECT COUNT(*) AS count FROM visits').get() as { count: number }).count === 0) {
@@ -643,61 +632,6 @@ function readVisitPayload(payload: VisitPayloadInput): ParsedVisitPayload {
   };
 }
 
-function rebuildSequencesAndLegs(options?: {
-  focusVisitId?: number;
-  focusInboundTransport?: string;
-  focusInboundNote?: string;
-}) {
-  const ordered = db
-    .prepare('SELECT id FROM visits ORDER BY arrived_at ASC, id ASC')
-    .all() as { id: number }[];
-
-  const updateSequence = db.prepare('UPDATE visits SET sequence = ? WHERE id = ?');
-  const selectInbound = db.prepare('SELECT inbound_transport, inbound_note FROM visits WHERE id = ?');
-  const updateInbound = db.prepare(
-    'UPDATE visits SET inbound_transport = ?, inbound_note = ? WHERE id = ?'
-  );
-
-  ordered.forEach((row, index) => {
-    updateSequence.run(index + 1, row.id);
-  });
-
-  db.prepare('DELETE FROM legs').run();
-
-  for (let i = 1; i < ordered.length; i += 1) {
-    const fromId = ordered[i - 1].id;
-    const toId = ordered[i].id;
-    const row = selectInbound.get(toId) as {
-      inbound_transport: string | null;
-      inbound_note: string | null;
-    };
-
-    let transport = row.inbound_transport || 'flight';
-    let note = row.inbound_note || '';
-
-    if (options?.focusVisitId === toId) {
-      transport = options.focusInboundTransport || 'flight';
-      note = options.focusInboundNote || '';
-      updateInbound.run(transport, note, toId);
-    }
-
-    const fromCoords = visitDestinationCoords(db, fromId);
-    const toCoords = visitDestinationCoords(db, toId);
-    const distanceKm =
-      fromCoords && toCoords ? distanceBetweenKm(fromCoords, toCoords) : null;
-
-    insertLeg.run({
-      fromVisitId: fromId,
-      toVisitId: toId,
-      transport,
-      durationHours: null,
-      distanceKm,
-      note,
-      sequence: i
-    });
-  }
-}
-
 export const createVisit = db.transaction((rawPayload: VisitPayloadInput) => {
   const payload = readVisitPayload(rawPayload);
 
@@ -741,7 +675,7 @@ export const createVisit = db.transaction((rawPayload: VisitPayloadInput) => {
     }).lastInsertRowid
   );
 
-  rebuildSequencesAndLegs({
+  rebuildSequencesAndLegs(db, {
     focusVisitId: visitId,
     focusInboundTransport: payload.inboundTransport || 'flight',
     focusInboundNote: payload.inboundNote || ''
@@ -823,7 +757,7 @@ export const updateVisit = db.transaction((visitId: number, rawPayload: VisitPay
 
   purgeOrphanLocations(db, [current.location_id, current.origin_location_id]);
 
-  rebuildSequencesAndLegs({
+  rebuildSequencesAndLegs(db, {
     focusVisitId: visitId,
     focusInboundTransport: payload.inboundTransport || 'flight',
     focusInboundNote: payload.inboundNote || ''
@@ -842,7 +776,7 @@ export const deleteVisit = db.transaction((visitId: number) => {
   db.prepare('DELETE FROM legs WHERE from_visit_id = ? OR to_visit_id = ?').run(visitId, visitId);
   db.prepare('DELETE FROM visits WHERE id = ?').run(visitId);
   purgeOrphanLocations(db, [current.location_id, current.origin_location_id]);
-  rebuildSequencesAndLegs();
+  rebuildSequencesAndLegs(db);
 
   return { visitId };
 });
@@ -853,7 +787,7 @@ function backfillLegDistancesIfNeeded() {
     .prepare(`SELECT COUNT(*) AS count FROM legs WHERE distance_km IS NULL`)
     .get() as { count: number };
   if (missing.count > 0) {
-    rebuildSequencesAndLegs();
+    rebuildSequencesAndLegs(db);
   }
 }
 
