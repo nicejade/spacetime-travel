@@ -3,7 +3,7 @@ import Fastify from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createVisit, deleteVisit, getAtlas, updateVisit } from './db.js';
+import { createVisit, deleteVisit, getAtlas, getExportDocument, importReplace, updateVisit } from './db.js';
 import type { HttpError } from './types.js';
 import type { VisitPayloadInput } from './types.js';
 import { parseVisitId } from './visitValidation.js';
@@ -13,7 +13,7 @@ const publicPath = path.resolve(__dirname, 'public');
 const port = Number(process.env.PORT || 5168);
 
 const app = Fastify({
-  bodyLimit: 1024 * 1024
+  bodyLimit: 5 * 1024 * 1024
 });
 
 app.setErrorHandler((error: HttpError, _request, reply) => {
@@ -26,6 +26,13 @@ app.setErrorHandler((error: HttpError, _request, reply) => {
 app.get('/api/health', async () => ({ ok: true }));
 
 app.get('/api/atlas', async () => getAtlas());
+
+app.get('/api/export', async () => getExportDocument());
+
+app.post('/api/import', async (request) => {
+  const result = importReplace(request.body);
+  return { ok: true, ...result, atlas: getAtlas() };
+});
 
 app.post('/api/visits', async (request, reply) => {
   const result = createVisit(request.body as VisitPayloadInput);

@@ -12,6 +12,7 @@ The app is designed around a spatial timeline: past journeys are plotted on an o
 - Directional route lines between visits, with transport-aware styles (flight, train, ferry, drive, bus, walk).
 - Year filters, timeline strip, and detail panel linked to the selected stop.
 - Visit CRUD with origin / outbound / return / inbound fields, place-name search, and map pick.
+- JSON export / import (full replace) for local backups.
 - Rating-based node glow so memorable stops stand out.
 - **Movie mode**: animated path playback with camera follow and WebM export.
 - **Stats**: trip counts, transport mix, and great-circle distance totals.
@@ -196,6 +197,18 @@ GET /api/atlas
 ```
 
 Returns visits, legs, visitRoutes, originSuggestions, years, yearColors, and aggregate stats.
+
+```http
+GET /api/export
+```
+
+Downloads a JSON backup of all visits (`format`, `schemaVersion`, flattened visit payloads).
+
+```http
+POST /api/import
+```
+
+Replaces all atlas data with a previously exported JSON document. Invalid files return `400` without wiping existing data.
 
 ```http
 POST /api/visits

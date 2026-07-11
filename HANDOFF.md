@@ -185,14 +185,14 @@
 
 ### P2-1 · JSON 导出 / 导入
 
-- **问题**：数据只在单个 sqlite；无导出口。本地优先应用的安全底线未兑现（原 P0 功能闭环）。
-- **位置**：`server/index.ts`（现仅 health/atlas/visits）；前端设置或侧栏入口。
-- **建议做法**：
-  - `GET /api/export` → 全量 JSON（visits + locations 或扁平 atlas 形状，带 `schemaVersion`）。
-  - `POST /api/import` → 校验版本后替换或合并（需明确策略：替换更简单）。
-  - UI：下载文件 / 选择文件上传；危险操作走 `ConfirmDialog`。
-- **验收**：导出 → 删库 → 导入 → 地图与统计与导出前一致；坏文件返回 400。
-- **依赖**：最好有 P0-1 的 `schemaVersion` 字段写进导出文件。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：
+  - `GET /api/export` → JSON（`format` + `schemaVersion` + visits 扁平 payload）
+  - `POST /api/import` → 校验后**整库替换**；坏文件 / 超前 schema 返回 400（校验在 wipe 前）
+  - `server/exportImport.ts` 解析；`db.getExportDocument` / `importReplace`
+  - 侧栏「导出数据 / 导入数据」；导入走 `ConfirmDialog`
+  - 测试：`exportImport.test.ts`、`db.test.ts` roundtrip
+- **策略**：替换（非合并）。
 
 ### P2-2 · 删除撤销（软删除或 Undo Toast）
 
@@ -361,6 +361,7 @@
 | Tailwind 策略 | 方案 A：base/reset only，样式以语义 CSS 为准 |
 | Smoke DB 隔离 | `SPACETIME_DB_PATH` + 临时库；默认 sqlite 不被 smoke 污染 |
 | db / movie 单测 | `db.test.ts` CRUD 路径；`pathSampler` / `timeline` 纯函数 |
+| JSON 导出导入 | `/api/export` + `/api/import`（替换策略）；侧栏入口 |
 
 ---
 
@@ -375,7 +376,7 @@
 | 5 | ~~写入校验~~ | ~~P0-5, P3-5~~ |
 | 6 | ~~文档 + gitignore + scripts~~ | ~~P1-1, P1-2, P1-3, P4-4~~ |
 | 7 | ~~Smoke 隔离 + db/movie 单测~~ | ~~P1-4, P1-5~~ |
-| 8 | JSON 导出导入 | P2-1 |
+| 8 | ~~JSON 导出导入~~ | ~~P2-1~~ |
 | 9 | 删除撤销 | P2-2 |
 | 10 | pan clamp + 电影 viewport + path 预计算 | P3-1, P3-2, P3-4 |
 | 11 | 共享 years / server 类型边界 | P1-6, P1-7 |
@@ -403,6 +404,7 @@
   server/rebuildLegs.test.ts
   server/visitValidation.test.ts
   server/visitRoutes.test.ts
+  server/exportImport.test.ts
   client/lib/stats/compute.test.ts
   client/lib/movie/pathSampler.test.ts
   client/lib/movie/timeline.test.ts

@@ -3,13 +3,15 @@
   import {
     BarChart3,
     CalendarDays,
+    Download,
     Globe,
     Image,
     MapPinned,
     Plus,
     RefreshCw,
     Route,
-    Star
+    Star,
+    Upload
   } from '@lucide/svelte';
   import MovieOverlay from './components/MovieOverlay.svelte';
   import PosterPreview from './components/PosterPreview.svelte';
@@ -19,7 +21,7 @@
   import TripPanel from './components/TripPanel.svelte';
   import ConfirmDialog from './components/ConfirmDialog.svelte';
   import VisitForm from './components/VisitForm.svelte';
-  import { deleteVisit, fetchAtlas } from '$lib/api';
+  import { deleteVisit, fetchAtlas, fetchExportDocument, importAtlasDocument } from '$lib/api';
   import { confirm } from '$lib/confirm';
   import { formatMonth } from '$lib/format';
   import {
@@ -64,6 +66,8 @@
   let posterFilename = 'spacetime-travel.png';
   let activeView: 'map' | 'stats' = 'map';
   let statsYear: number | 'all' = 'all';
+  let importInput: HTMLInputElement | null = null;
+  let backupBusy = false;
 
   onMount(() => {
     loadAtlas();
@@ -384,6 +388,66 @@
       flash(deleteError instanceof Error ? deleteError.message : '删除失败');
     }
   }
+
+  async function handleExportData() {
+    if (backupBusy) return;
+    backupBusy = true;
+    try {
+      const document = await fetchExportDocument();
+      const stamp = document.exportedAt.slice(0, 10);
+      const blob = new Blob([JSON.stringify(document, null, 2)], {
+        type: 'application/json'
+      });
+      downloadBlob(blob, `spacetime-travel-${stamp}.json`);
+      flash(`已导出 ${document.visits.length} 个节点`);
+    } catch (exportError) {
+      flash(exportError instanceof Error ? exportError.message : '导出失败');
+    } finally {
+      backupBusy = false;
+    }
+  }
+
+  function openImportPicker() {
+    if (backupBusy) return;
+    importInput?.click();
+  }
+
+  async function handleImportFile(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    const confirmed = await confirm({
+      title: '导入旅行数据',
+      message: `导入「${file.name}」将替换当前全部旅行节点，且不可撤销。建议先导出备份。`,
+      confirmLabel: '替换导入',
+      cancelLabel: '取消',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
+    backupBusy = true;
+    try {
+      const text = await file.text();
+      let document: unknown;
+      try {
+        document = JSON.parse(text);
+      } catch {
+        throw new Error('无法解析 JSON 文件');
+      }
+
+      const result = await importAtlasDocument(document);
+      atlas = result.atlas;
+      selectedYear = 'all';
+      selectedVisitId = atlas.visits.at(-1)?.id ?? null;
+      flash(`已导入 ${result.visitCount} 个节点`);
+    } catch (importError) {
+      flash(importError instanceof Error ? importError.message : '导入失败');
+    } finally {
+      backupBusy = false;
+    }
+  }
 </script>
 
 <main class="app-shell">
@@ -489,6 +553,33 @@
     >
       <Image size={17} />生成海报
     </button>
+
+    <button
+      type="button"
+      class="secondary-button poster-button"
+      disabled={loading || backupBusy}
+      title="导出全部旅行数据为 JSON"
+      on:click={handleExportData}
+    >
+      <Download size={17} />导出数据
+    </button>
+
+    <button
+      type="button"
+      class="secondary-button poster-button"
+      disabled={loading || backupBusy}
+      title="从 JSON 备份替换导入"
+      on:click={openImportPicker}
+    >
+      <Upload size={17} />导入数据
+    </button>
+    <input
+      bind:this={importInput}
+      type="file"
+      accept="application/json,.json"
+      hidden
+      on:change={handleImportFile}
+    />
 
     <div class="trip-filter" aria-label="年份筛选">
       <button type="button" class:active={selectedYear === 'all'} on:click={() => selectYear('all')}>

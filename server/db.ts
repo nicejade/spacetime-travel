@@ -3,11 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ensureLocation, purgeOrphanLocations } from './locations.js';
-import { migrate } from './migrations.js';
+import { migrate, SCHEMA_VERSION } from './migrations.js';
 import { rebuildSequencesAndLegs } from './rebuildLegs.js';
 import type { HttpError, ParsedVisitPayload, VisitPayloadInput } from './types.js';
 import { assertDateOrder, parseIsoDate, parseTransport } from './visitValidation.js';
 import { buildVisitRoutes } from './visitRoutes.js';
+import { buildExportDocument, parseExportDocument, type ExportVisit } from './exportImport.js';
 
 function httpError(status: number, message: string): HttpError {
   const error = new Error(message) as HttpError;
@@ -654,46 +655,7 @@ function readVisitPayload(payload: VisitPayloadInput): ParsedVisitPayload {
 
 export const createVisit = db.transaction((rawPayload: VisitPayloadInput) => {
   const payload = readVisitPayload(rawPayload);
-
-  const locationId = ensureLocation(db, {
-    name: payload.locationName,
-    country: payload.country,
-    lat: payload.lat,
-    lng: payload.lng,
-    kind: 'city'
-  });
-
-  const originLocationId = ensureLocation(db, {
-    name: payload.originName,
-    country: payload.originCountry,
-    lat: payload.originLat,
-    lng: payload.originLng,
-    kind: 'city'
-  });
-
-  const visitId = Number(
-    insertVisit.run({
-      locationId,
-      originLocationId,
-      returnsToOrigin: payload.returnsToOrigin ? 1 : 0,
-      outboundTransport: payload.outboundTransport,
-      outboundNote: payload.outboundNote,
-      returnTransport: payload.returnTransport,
-      returnNote: payload.returnNote,
-      inboundTransport: payload.inboundTransport,
-      inboundNote: payload.inboundNote,
-      arrivedAt: payload.arrivedAt,
-      departedAt: payload.departedAt,
-      feeling: payload.feeling,
-      food: payload.food,
-      rating: payload.rating,
-      mood: payload.mood,
-      weather: payload.weather,
-      memory: payload.memory,
-      tags: payload.tags,
-      sequence: 0
-    }).lastInsertRowid
-  );
+  const visitId = insertParsedVisit(payload);
 
   rebuildSequencesAndLegs(db, {
     focusVisitId: visitId,
@@ -812,3 +774,100 @@ function backfillLegDistancesIfNeeded() {
 }
 
 backfillLegDistancesIfNeeded();
+
+function visitToExportPayload(visit: ReturnType<typeof normalizeVisit>): ExportVisit {
+  return {
+    locationName: visit.location.name,
+    country: visit.location.country,
+    lat: visit.location.lat,
+    lng: visit.location.lng,
+    arrivedAt: visit.arrivedAt,
+    departedAt: visit.departedAt ?? undefined,
+    originName: visit.origin.name,
+    originCountry: visit.origin.country,
+    originLat: visit.origin.lat,
+    originLng: visit.origin.lng,
+    returnsToOrigin: visit.returnsToOrigin,
+    outboundTransport: visit.outboundTransport,
+    outboundNote: visit.outboundNote,
+    returnTransport: visit.returnTransport ?? undefined,
+    returnNote: visit.returnNote,
+    inboundTransport: visit.inboundTransport ?? undefined,
+    inboundNote: visit.inboundNote ?? undefined,
+    feeling: visit.feeling,
+    food: visit.food,
+    rating: visit.rating,
+    mood: visit.mood,
+    weather: visit.weather,
+    memory: visit.memory,
+    tags: visit.tags
+  };
+}
+
+export function getExportDocument() {
+  const atlas = getAtlas();
+  return buildExportDocument(atlas.visits.map(visitToExportPayload));
+}
+
+function insertParsedVisit(payload: ParsedVisitPayload): number {
+  const locationId = ensureLocation(db, {
+    name: payload.locationName,
+    country: payload.country,
+    lat: payload.lat,
+    lng: payload.lng,
+    kind: 'city'
+  });
+
+  const originLocationId = ensureLocation(db, {
+    name: payload.originName,
+    country: payload.originCountry,
+    lat: payload.originLat,
+    lng: payload.originLng,
+    kind: 'city'
+  });
+
+  return Number(
+    insertVisit.run({
+      locationId,
+      originLocationId,
+      returnsToOrigin: payload.returnsToOrigin ? 1 : 0,
+      outboundTransport: payload.outboundTransport,
+      outboundNote: payload.outboundNote,
+      returnTransport: payload.returnTransport,
+      returnNote: payload.returnNote,
+      inboundTransport: payload.inboundTransport,
+      inboundNote: payload.inboundNote,
+      arrivedAt: payload.arrivedAt,
+      departedAt: payload.departedAt,
+      feeling: payload.feeling,
+      food: payload.food,
+      rating: payload.rating,
+      mood: payload.mood,
+      weather: payload.weather,
+      memory: payload.memory,
+      tags: payload.tags,
+      sequence: 0
+    }).lastInsertRowid
+  );
+}
+
+/** Replace all atlas data with an exported JSON document (replace strategy). */
+export const importReplace = db.transaction((raw: unknown) => {
+  const parsed = parseExportDocument(raw);
+  const payloads = parsed.visits.map((visit) => readVisitPayload(visit));
+
+  db.prepare('DELETE FROM legs').run();
+  db.prepare('DELETE FROM visits').run();
+  db.prepare('DELETE FROM locations').run();
+
+  for (const payload of payloads) {
+    insertParsedVisit(payload);
+  }
+
+  rebuildSequencesAndLegs(db);
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    visitCount: payloads.length
+  };
+});

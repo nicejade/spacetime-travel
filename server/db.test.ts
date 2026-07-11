@@ -9,7 +9,8 @@ const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spacetime-db-api-'));
 const tempDbPath = path.join(tempDir, 'test.sqlite');
 process.env.SPACETIME_DB_PATH = tempDbPath;
 
-const { createVisit, db, deleteVisit, getAtlas, updateVisit } = await import('./db.js');
+const { createVisit, db, deleteVisit, getAtlas, getExportDocument, importReplace, updateVisit } =
+  await import('./db.js');
 
 after(() => {
   db.close();
@@ -230,5 +231,82 @@ describe('db location reuse', () => {
       .prepare('SELECT id FROM locations WHERE id = ?')
       .get(oldLocationId) as { id: number } | undefined;
     assert.equal(remaining, undefined);
+  });
+});
+
+describe('db export / import replace', () => {
+  it('round-trips visits through export and replace import', () => {
+    const exported = getExportDocument();
+    assert.ok(exported.visits.length > 0);
+    assert.equal(typeof exported.schemaVersion, 'number');
+
+    const snapshot = exported.visits.map((visit) => ({
+      locationName: visit.locationName,
+      country: visit.country,
+      arrivedAt: visit.arrivedAt,
+      returnsToOrigin: visit.returnsToOrigin,
+      outboundTransport: visit.outboundTransport
+    }));
+
+    createVisit(
+      payload({
+        locationName: '应被替换',
+        country: '临时',
+        lat: 1,
+        lng: 1,
+        arrivedAt: '2099-01-01'
+      })
+    );
+    assert.ok(getAtlas().visits.some((visit) => visit.location.name === '应被替换'));
+
+    const result = importReplace(exported);
+    assert.equal(result.visitCount, snapshot.length);
+
+    const atlas = getAtlas();
+    assert.equal(atlas.visits.length, snapshot.length);
+    assert.equal(atlas.visits.some((visit) => visit.location.name === '应被替换'), false);
+    assert.deepEqual(
+      atlas.visits.map((visit) => ({
+        locationName: visit.location.name,
+        country: visit.location.country,
+        arrivedAt: visit.arrivedAt,
+        returnsToOrigin: visit.returnsToOrigin,
+        outboundTransport: visit.outboundTransport
+      })),
+      snapshot
+    );
+    assert.equal(atlas.legs.length, Math.max(0, atlas.visits.length - 1));
+  });
+
+  it('rejects bad import payloads without wiping data', () => {
+    const before = getAtlas().visits.length;
+    assert.throws(() => importReplace({ format: 'nope', schemaVersion: 1, visits: [] }), /无法识别/);
+    assert.equal(getAtlas().visits.length, before);
+  });
+
+  it('rejects invalid visit rows inside an otherwise valid document', () => {
+    const before = getAtlas().visits.length;
+    assert.throws(
+      () =>
+        importReplace({
+          format: 'spacetime-travel',
+          schemaVersion: 1,
+          visits: [
+            {
+              locationName: '坏点',
+              country: 'X',
+              lat: 1,
+              lng: 1,
+              arrivedAt: 'not-a-date',
+              originName: '家',
+              originCountry: '中国',
+              originLat: 30,
+              originLng: 120
+            }
+          ]
+        }),
+      /到达时间/
+    );
+    assert.equal(getAtlas().visits.length, before);
   });
 });
