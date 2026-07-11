@@ -1,5 +1,5 @@
-import { splitTags } from '$lib/format';
-import type { Visit } from '$lib/types';
+import { splitTags, transportLabel } from '$lib/format';
+import type { Leg, Visit } from '$lib/types';
 import { visitYear } from '$lib/years';
 import type {
   BarItem,
@@ -34,7 +34,7 @@ function countBy<T>(items: T[], keyFn: (item: T) => string): Map<string, number>
   return counts;
 }
 
-function computeKpi(visits: Visit[]): StatsKpi {
+function computeKpi(visits: Visit[], legs: Leg[]): StatsKpi {
   const countries = new Set(visits.map((visit) => visit.location.country).filter(Boolean));
   const ratings = visits.map((visit) => visit.rating).filter((rating) => rating > 0);
   const years = visits.map((visit) => visitYear(visit.arrivedAt)).filter(Number.isFinite);
@@ -46,14 +46,37 @@ function computeKpi(visits: Visit[]): StatsKpi {
     spanLabel = minYear === maxYear ? String(minYear) : `${minYear} – ${maxYear}`;
   }
 
+  const totalDistanceKm = legs.reduce((sum, leg) => {
+    const km = leg.distanceKm;
+    return sum + (typeof km === 'number' && Number.isFinite(km) ? km : 0);
+  }, 0);
+
   return {
     visitCount: visits.length,
     countryCount: countries.size,
     averageRating: ratings.length
       ? Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10) / 10
       : null,
-    spanLabel
+    spanLabel,
+    totalDistanceKm: Math.round(totalDistanceKm * 10) / 10
   };
+}
+
+function computeTransportDistance(legs: Leg[]): BarItem[] {
+  const byTransport = new Map<string, number>();
+  for (const leg of legs) {
+    const km = leg.distanceKm;
+    if (typeof km !== 'number' || !Number.isFinite(km) || km <= 0) continue;
+    const key = leg.transport || 'flight';
+    byTransport.set(key, (byTransport.get(key) ?? 0) + km);
+  }
+
+  return [...byTransport.entries()]
+    .map(([label, value]) => ({
+      label: transportLabel(label),
+      value: Math.round(value * 10) / 10
+    }))
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'zh-CN'));
 }
 
 function computeTimeTrend(visits: Visit[], statsYear: number | 'all', yearColors: Record<string, string>): TimeTrend {
@@ -246,17 +269,25 @@ function computeTags(visits: Visit[]): TagThemes {
   };
 }
 
+export function filterLegsForVisits(legs: Leg[], visits: Visit[]): Leg[] {
+  const visitIds = new Set(visits.map((visit) => visit.id));
+  return legs.filter((leg) => visitIds.has(leg.fromVisitId) && visitIds.has(leg.toVisitId));
+}
+
 export function computeStatsSnapshot(
   visits: Visit[],
   statsYear: number | 'all',
-  yearColors: Record<string, string> = {}
+  yearColors: Record<string, string> = {},
+  legs: Leg[] = []
 ): StatsSnapshot {
+  const scopedLegs = filterLegsForVisits(legs, visits);
   return {
-    kpi: computeKpi(visits),
+    kpi: computeKpi(visits, scopedLegs),
     timeTrend: computeTimeTrend(visits, statsYear, yearColors),
     geo: computeGeo(visits),
     rating: computeRating(visits, statsYear, yearColors),
     tags: computeTags(visits),
+    transportDistance: computeTransportDistance(scopedLegs),
     isEmpty: visits.length === 0
   };
 }

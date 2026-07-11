@@ -60,3 +60,11 @@ export function splitTags(value: string | null | undefined): string[] {
     .map((tag) => tag.trim())
     .filter(Boolean);
 }
+
+/** Format a kilometer distance for stats / UI. */
+export function formatDistanceKm(km: number | null | undefined): string {
+  if (typeof km !== 'number' || !Number.isFinite(km) || km <= 0) return '—';
+  if (km >= 10000) return `${Math.round(km / 1000)}k km`;
+  if (km >= 1000) return `${(km / 1000).toFixed(1)}k km`;
+  return `${Math.round(km)} km`;
+}

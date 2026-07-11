@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { distanceBetweenKm, visitDestinationCoords } from './haversine.js';
 import { ensureLocation, purgeOrphanLocations } from './locations.js';
 import { migrate } from './migrations.js';
 import type { HttpError, ParsedVisitPayload, VisitPayloadInput } from './types.js';
@@ -651,8 +652,14 @@ function rebuildSequencesAndLegs(options?: {
     .prepare('SELECT id FROM visits ORDER BY arrived_at ASC, id ASC')
     .all() as { id: number }[];
 
+  const updateSequence = db.prepare('UPDATE visits SET sequence = ? WHERE id = ?');
+  const selectInbound = db.prepare('SELECT inbound_transport, inbound_note FROM visits WHERE id = ?');
+  const updateInbound = db.prepare(
+    'UPDATE visits SET inbound_transport = ?, inbound_note = ? WHERE id = ?'
+  );
+
   ordered.forEach((row, index) => {
-    db.prepare('UPDATE visits SET sequence = ? WHERE id = ?').run(index + 1, row.id);
+    updateSequence.run(index + 1, row.id);
   });
 
   db.prepare('DELETE FROM legs').run();
@@ -660,7 +667,7 @@ function rebuildSequencesAndLegs(options?: {
   for (let i = 1; i < ordered.length; i += 1) {
     const fromId = ordered[i - 1].id;
     const toId = ordered[i].id;
-    const row = db.prepare('SELECT inbound_transport, inbound_note FROM visits WHERE id = ?').get(toId) as {
+    const row = selectInbound.get(toId) as {
       inbound_transport: string | null;
       inbound_note: string | null;
     };
@@ -671,19 +678,20 @@ function rebuildSequencesAndLegs(options?: {
     if (options?.focusVisitId === toId) {
       transport = options.focusInboundTransport || 'flight';
       note = options.focusInboundNote || '';
-      db.prepare('UPDATE visits SET inbound_transport = ?, inbound_note = ? WHERE id = ?').run(
-        transport,
-        note,
-        toId
-      );
+      updateInbound.run(transport, note, toId);
     }
+
+    const fromCoords = visitDestinationCoords(db, fromId);
+    const toCoords = visitDestinationCoords(db, toId);
+    const distanceKm =
+      fromCoords && toCoords ? distanceBetweenKm(fromCoords, toCoords) : null;
 
     insertLeg.run({
       fromVisitId: fromId,
       toVisitId: toId,
       transport,
       durationHours: null,
-      distanceKm: null,
+      distanceKm,
       note,
       sequence: i
     });
@@ -838,3 +846,15 @@ export const deleteVisit = db.transaction((visitId: number) => {
 
   return { visitId };
 });
+
+/** One-shot backfill for DBs whose legs were written before distance_km was populated. */
+function backfillLegDistancesIfNeeded() {
+  const missing = db
+    .prepare(`SELECT COUNT(*) AS count FROM legs WHERE distance_km IS NULL`)
+    .get() as { count: number };
+  if (missing.count > 0) {
+    rebuildSequencesAndLegs();
+  }
+}
+
+backfillLegDistancesIfNeeded();

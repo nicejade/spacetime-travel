@@ -2,11 +2,13 @@
   import { ArrowLeft, BarChart3, CalendarDays, MapPinned, Route, Star } from '@lucide/svelte';
   import BarChart from './stats/BarChart.svelte';
   import StatCard from './stats/StatCard.svelte';
+  import { formatDistanceKm } from '$lib/format';
   import { computeStatsSnapshot } from '$lib/stats/compute';
   import { filterVisits } from '$lib/stats/filter';
-  import type { Visit } from '$lib/types';
+  import type { Leg, Visit } from '$lib/types';
 
   export let visits: Visit[] = [];
+  export let legs: Leg[] = [];
   export let years: number[] = [];
   export let yearColors: Record<string, string> = {};
   export let statsYear: number | 'all' = 'all';
@@ -15,7 +17,7 @@
   export let onStatsYearChange: (year: number | 'all') => void = () => {};
 
   $: filteredVisits = filterVisits(visits, statsYear);
-  $: snapshot = computeStatsSnapshot(filteredVisits, statsYear, yearColors);
+  $: snapshot = computeStatsSnapshot(filteredVisits, statsYear, yearColors, legs);
   $: kpi = snapshot.kpi;
 </script>
 
@@ -65,6 +67,11 @@
         <small>地区</small>
       </div>
       <div class="kpi-card glass-panel">
+        <Route size={17} />
+        <span>{formatDistanceKm(kpi.totalDistanceKm)}</span>
+        <small>总里程</small>
+      </div>
+      <div class="kpi-card glass-panel">
         <Star size={17} />
         <span>{kpi.averageRating ?? '—'}</span>
         <small>均分</small>
@@ -82,6 +89,17 @@
           items={snapshot.timeTrend.bars}
           ariaLabel={snapshot.timeTrend.mode === 'yearly' ? '按年访问频次' : '按月访问频次'}
         />
+      </StatCard>
+
+      <StatCard
+        title="交通里程"
+        summary={snapshot.transportDistance.length ? '按站间连线大圆距离汇总' : '暂无路段里程'}
+      >
+        {#if snapshot.transportDistance.length}
+          <BarChart items={snapshot.transportDistance} valueSuffix=" km" ariaLabel="各交通方式里程" />
+        {:else}
+          <p class="hint">新增至少两站后，将按相邻节点计算里程。</p>
+        {/if}
       </StatCard>
 
       <StatCard title="地理分布">
@@ -271,6 +289,13 @@
     text-align: center;
   }
 
+  .hint {
+    margin: 0;
+    color: #6a8088;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
   .empty-panel .hint {
     margin: 8px 0 0;
     color: #6a8088;
@@ -279,7 +304,7 @@
 
   .kpi-row {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
     gap: 10px;
     margin-bottom: 14px;
   }

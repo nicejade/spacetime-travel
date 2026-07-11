@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { computeStatsSnapshot } from './compute';
 import { filterVisits } from './filter';
-import type { Visit } from '$lib/types';
+import type { Leg, Visit } from '$lib/types';
 
 function makeVisit(overrides: Partial<Visit> & Pick<Visit, 'id' | 'arrivedAt' | 'location'>): Visit {
   const origin = overrides.origin ?? {
@@ -31,6 +31,17 @@ function makeVisit(overrides: Partial<Visit> & Pick<Visit, 'id' | 'arrivedAt' | 
     returnNote: '',
     inboundTransport: null,
     inboundNote: null,
+    ...overrides
+  };
+}
+
+function makeLeg(overrides: Partial<Leg> & Pick<Leg, 'id' | 'fromVisitId' | 'toVisitId'>): Leg {
+  return {
+    transport: 'flight',
+    durationHours: null,
+    distanceKm: null,
+    note: '',
+    sequence: overrides.id,
     ...overrides
   };
 }
@@ -65,6 +76,8 @@ describe('computeStatsSnapshot', () => {
     assert.equal(snapshot.isEmpty, true);
     assert.equal(snapshot.kpi.visitCount, 0);
     assert.equal(snapshot.kpi.averageRating, null);
+    assert.equal(snapshot.kpi.totalDistanceKm, 0);
+    assert.equal(snapshot.transportDistance.length, 0);
   });
 
   it('aggregates countries, ratings, and tags', () => {
@@ -106,6 +119,66 @@ describe('computeStatsSnapshot', () => {
     assert.equal(snapshot.tags.tags[0]?.label, '美食');
     assert.equal(snapshot.rating.hasRatings, true);
     assert.equal(snapshot.rating.yearlyAverage.length, 2);
+  });
+
+  it('sums leg distances and groups by transport', () => {
+    const visits = [
+      makeVisit({
+        id: 1,
+        arrivedAt: '2024-01-10',
+        location: { id: 1, name: '东京', country: '日本', lat: 35.6, lng: 139.7, kind: 'city' }
+      }),
+      makeVisit({
+        id: 2,
+        arrivedAt: '2024-01-12',
+        location: { id: 2, name: '大阪', country: '日本', lat: 34.6, lng: 135.5, kind: 'city' }
+      }),
+      makeVisit({
+        id: 3,
+        arrivedAt: '2024-01-15',
+        location: { id: 3, name: '首尔', country: '韩国', lat: 37.5, lng: 127.0, kind: 'city' }
+      })
+    ];
+    const legs = [
+      makeLeg({ id: 1, fromVisitId: 1, toVisitId: 2, transport: 'train', distanceKm: 400 }),
+      makeLeg({ id: 2, fromVisitId: 2, toVisitId: 3, transport: 'flight', distanceKm: 800.5 })
+    ];
+
+    const snapshot = computeStatsSnapshot(visits, 'all', {}, legs);
+    assert.equal(snapshot.kpi.totalDistanceKm, 1200.5);
+    assert.equal(snapshot.transportDistance.length, 2);
+    assert.equal(snapshot.transportDistance[0]?.label, '飞行');
+    assert.equal(snapshot.transportDistance[0]?.value, 800.5);
+    assert.equal(snapshot.transportDistance[1]?.label, '火车');
+    assert.equal(snapshot.transportDistance[1]?.value, 400);
+  });
+
+  it('scopes distance to filtered visits only', () => {
+    const visits = [
+      makeVisit({
+        id: 1,
+        arrivedAt: '2023-01-10',
+        location: { id: 1, name: '东京', country: '日本', lat: 0, lng: 0, kind: 'city' }
+      }),
+      makeVisit({
+        id: 2,
+        arrivedAt: '2024-01-12',
+        location: { id: 2, name: '大阪', country: '日本', lat: 0, lng: 0, kind: 'city' }
+      }),
+      makeVisit({
+        id: 3,
+        arrivedAt: '2024-01-15',
+        location: { id: 3, name: '京都', country: '日本', lat: 0, lng: 0, kind: 'city' }
+      })
+    ];
+    const legs = [
+      makeLeg({ id: 1, fromVisitId: 1, toVisitId: 2, distanceKm: 500 }),
+      makeLeg({ id: 2, fromVisitId: 2, toVisitId: 3, transport: 'train', distanceKm: 50 })
+    ];
+
+    const filtered = filterVisits(visits, 2024);
+    const snapshot = computeStatsSnapshot(filtered, 2024, {}, legs);
+    assert.equal(snapshot.kpi.totalDistanceKm, 50);
   });
 
   it('uses monthly bars for a single year filter', () => {

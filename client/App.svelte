@@ -423,6 +423,7 @@
   {#if activeView === 'stats'}
     <StatsView
       visits={visits}
+      legs={legs}
       years={years}
       yearColors={yearColors}
       statsYear={statsYear}

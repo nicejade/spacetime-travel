@@ -98,14 +98,12 @@
 
 ### P0-3 · 兑现或清理 `legs` 派生字段
 
-- **问题**：`legs.distance_km` / `duration_hours` 建表已有，所有写入填 `null`（`rebuildSequencesAndLegs` ~755–756）。统计页无法做总里程；schema 负债。
-- **位置**：`server/db.ts` `rebuildSequencesAndLegs`；`client/lib/stats/compute.ts`（可消费距离后扩展）。
-- **建议做法（二选一，会话开始时写明）**：
-  - **A（推荐）**：重建 leg 时用 Haversine 写入 `distance_km`；`duration_hours` 可暂空或按交通方式粗估。Stats 增加总里程 / 交通占比。
-  - **B**：删除这两列（迁移 DROP），与 `visitRoutes` 一样读时计算——减少假字段。
-- **验收（选 A）**：新建/更新/删除 visit 后 legs 有合理 `distance_km`；统计页能展示总里程。
-- **依赖**：P0-1（若改 schema）；选 A 可不改 schema 只改写入。
-- **建议会话**：与 Stats 里程展示可同一会话。
+- **状态**：~~已完成（2026-07-11，方案 A）~~
+- **实现**：
+  - `server/haversine.ts`：大圆距离；`rebuildSequencesAndLegs` 写入 `distance_km`（`duration_hours` 仍为 null）
+  - 启动时若存在 `distance_km IS NULL` 的 legs 则自动回填重建
+  - Stats：`kpi.totalDistanceKm` +「交通里程」模块；`StatsView` 接收 `legs`
+  - 测试：`server/haversine.test.ts`、`server/legDistance.test.ts`、`client/lib/stats/compute.test.ts`
 
 ### P0-4 · `rebuildSequencesAndLegs` 性能与一致性
 
@@ -394,6 +392,7 @@
 | Schema 迁移机制 | `server/migrations.ts` + `PRAGMA user_version`；空库/旧库可升到当前版本 |
 | FK 列索引 | 迁移 1：`idx_visits_location_id` 等四条 |
 | locations 实体化 | `ensureLocation` 复用、`purgeOrphanLocations`、迁移 2 去重 + `idx_locations_name_country` |
+| legs 大圆距离 | Haversine 写入 `distance_km`；Stats 总里程 + 交通里程 |
 
 ---
 
@@ -403,7 +402,7 @@
 | --- | --- | --- |
 | 1 | ~~Schema 迁移骨架 + FK 索引~~ | ~~P0-1, P0-6~~ |
 | 2 | ~~locations 实体化 + 测试~~ | ~~P0-2~~ |
-| 3 | legs 距离 + Stats 里程 | P0-3, P5-11（部分） |
+| 3 | ~~legs 距离 + Stats 里程~~ | ~~P0-3~~ |
 | 4 | 写入校验 | P0-5, P3-5 |
 | 5 | 文档 + gitignore + scripts | P1-1, P1-2, P1-3, P4-4 |
 | 6 | Smoke 隔离 + db/movie 单测 | P1-4, P1-5 |
@@ -428,6 +427,8 @@
   ```bash
   node --import tsx --test server/migrations.test.ts
   node --import tsx --test server/locations.test.ts
+  node --import tsx --test server/haversine.test.ts
+  node --import tsx --test server/legDistance.test.ts
   node --import tsx --test server/visitRoutes.test.ts
   node --import tsx --test client/lib/stats/compute.test.ts
   node --import tsx scripts/smoke-visit-origin.mjs   # 会写真实 DB，见 P1-4

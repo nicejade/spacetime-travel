@@ -9,6 +9,8 @@ export interface StatsKpi {
   countryCount: number;
   averageRating: number | null;
   spanLabel: string;
+  /** Sum of leg great-circle distances in the current filter scope (km). */
+  totalDistanceKm: number;
 }
 
 export interface CountryRow {
@@ -60,5 +62,7 @@ export interface StatsSnapshot {
   geo: GeoDistribution;
   rating: RatingAnalysis;
   tags: TagThemes;
+  /** Distance by transport mode (km), scoped to filtered visits. */
+  transportDistance: BarItem[];
   isEmpty: boolean;
 }
