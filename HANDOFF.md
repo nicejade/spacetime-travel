@@ -14,7 +14,7 @@
 
 **真实技术栈**（注意：旧文档曾写 Express / `dist/`，以下为准）：
 
-- 前端：Svelte 5 运行时 + **Svelte 4 遗留组件语法**（尚未迁移 runes）、Vite 6、Tailwind CSS 4（已安装，但组件几乎全用手写 scoped CSS + `app.css` 语义类）
+- 前端：Svelte 5 运行时 + **Svelte 4 遗留组件语法**（尚未迁移 runes）、Vite 6、Tailwind CSS 4（仅 base/reset；组件用手写 scoped CSS + `app.css` 语义类）
 - 后端：Fastify 5 + `better-sqlite3`（WAL）
 - 地图：`d3-geo` + `topojson-client` + `world-atlas`（离线 SVG）
 - 开发：Vite `:5167`，API `:5168`，proxy `/api` → API
@@ -57,7 +57,7 @@
 
 定位清晰：离线地图 + 情感字段 + 交通视觉语言，区别于打卡地图。电影模式 / 统计 / 海报已把「记忆升维」与「表达输出」的核心体验兑现。
 
-长久维护的主要瓶颈在 **数据层生命周期**（无迁移、locations 假实体、legs 半成品）与 **文档/工程卫生滞后**，其次才是前端技术债与产品增强。
+长久维护的主要瓶颈在 **数据层生命周期**（无迁移、locations 假实体、legs 半成品）曾是首要风险，P0 已基本收口；其次是前端技术债与产品增强。文档 / scripts / gitignore 已对齐（P1-1～P1-3）。
 
 ---
 
@@ -133,35 +133,23 @@
 
 ### P1-1 · 同步 README / HANDOFF 与代码
 
-- **问题**（部分已在本文修正，README 仍滞后）：
-  - README 仍可能写 Express、`dist/`、`db.js`/`index.js`、过时目录树。
-  - Features 未列：电影模式、统计页、海报、起点/回程、地名搜索。
-  - 旧 HANDOFF 把已完成功能标为「未来」、把已修复 bug 仍列「已知」。
-- **位置**：`README.md`；本文。
-- **建议做法**：按「当前状态」表重写 README Features / Structure / Tech Stack / 构建输出路径；删除 Express/`dist` 表述。
-- **验收**：新贡献者只读 README 能正确 `pnpm dev`、理解 Fastify + `server/public`、知道三大功能入口。
-- **依赖**：无。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：README 重写为 Fastify + `server/public/`；Features 含电影/统计/海报/起点回程/地名搜索；目录树与 Tech Stack 对齐代码；Tailwind 策略见 P4-4。
 
 ### P1-2 · Gitignore 构建产物 `server/public/`
 
-- **问题**：`vite.config.ts` `outDir: './server/public'`，`.gitignore` 只忽略 `dist/`。`server/public/` 常以 untracked 出现在 `git status`。
-- **位置**：`.gitignore`；可选清理已跟踪文件。
-- **建议做法**：忽略 `server/public/`（或整目录）；文档写明生产构建输出位置。
-- **验收**：`pnpm build` 后 `git status` 不出现 public 下 hash 资源。
-- **依赖**：无。可与 P1-1 同会话。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：`.gitignore` 增加 `server/public/`；README 写明生产构建输出位置。
 
 ### P1-3 · 补齐 `package.json` scripts
 
-- **问题**：无 `test` 脚本；`typecheck` 存在但未进日常/CI。
-- **位置**：`package.json`。
-- **建议做法**：
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：
   ```json
   "test": "node --import tsx --test server/**/*.test.ts client/**/*.test.ts",
   "smoke:visit-origin": "node --import tsx scripts/smoke-visit-origin.mjs"
   ```
-  并在 README Scripts 段说明。
-- **验收**：`pnpm test` / `pnpm typecheck` 可一键跑通。
-- **依赖**：无。
+  README Scripts 段已说明；`pnpm test` / `pnpm typecheck` 可一键跑。
 
 ### P1-4 · Smoke 脚本隔离数据库
 
@@ -313,12 +301,8 @@
 
 ### P4-4 · Tailwind 策略决策（二选一并文档化）
 
-- **问题**：README 宣称 Tailwind，实际 utility 几乎未用；`app.css` + scoped CSS 才是设计系统。
-- **建议做法**：
-  - **A**：更新 README：「Tailwind 仅作 base/reset，样式以语义 CSS 为准」。
-  - **B**：逐步把重复样式改为 utility（工作量大，不推荐除非要统一团队习惯）。
-- **验收**：文档与代码一致；不出现半套两套规范。
-- **依赖**：无。推荐选 A，与 P1-1 合并。
+- **状态**：~~已完成（2026-07-11，方案 A）~~
+- **实现**：README Tech Stack 写明 Tailwind 仅作 base/reset；UI 以 `client/app.css` + 组件 scoped 语义类为准，不走 utility-first。
 
 ### P4-5 · API 客户端增强（按需）
 
@@ -367,7 +351,7 @@
 | 移除旅行线 → 年份筛选 | 见 spec `2026-07-08-remove-travel-lines-year-filter-design.md` |
 | 出发起点与回程 | visits origin 模型 + `visitRoutes` |
 | 电影模式 | `client/lib/movie/` + overlay + WebM 导出 |
-| 统计页 | `StatsView` + `compute.ts`（里程等仍待 P0-3） |
+| 统计页 | `StatsView` + `compute.ts`（含交通里程） |
 | 旅行海报 | `client/lib/poster/` |
 | 删除确认 UI | `ConfirmDialog` + `confirm()` Promise API（**不是**原生 `confirm`） |
 | 跨日界线路由 | `pathSampler.buildRouteGeometry`；Canvas/海报/电影共用 |
@@ -378,6 +362,8 @@
 | legs 大圆距离 | Haversine 写入 `distance_km`；Stats 总里程 + 交通里程 |
 | legs/sequence 重建优化 | `rebuildLegs.ts`：窗口函数写 sequence + 单次 JOIN 批量建 leg |
 | 写入校验加固 | `visitValidation.ts`：日期 / transport / visitId；VisitForm 对称校验 |
+| README / 工程卫生 | Fastify + `server/public` 文档；gitignore public；`pnpm test` / smoke scripts |
+| Tailwind 策略 | 方案 A：base/reset only，样式以语义 CSS 为准 |
 
 ---
 
@@ -390,7 +376,7 @@
 | 3 | ~~legs 距离 + Stats 里程~~ | ~~P0-3~~ |
 | 4 | ~~rebuildSequencesAndLegs 优化~~ | ~~P0-4~~ |
 | 5 | ~~写入校验~~ | ~~P0-5, P3-5~~ |
-| 6 | 文档 + gitignore + scripts | P1-1, P1-2, P1-3, P4-4 |
+| 6 | ~~文档 + gitignore + scripts~~ | ~~P1-1, P1-2, P1-3, P4-4~~ |
 | 7 | Smoke 隔离 + db/movie 单测 | P1-4, P1-5 |
 | 8 | JSON 导出导入 | P2-1 |
 | 9 | 删除撤销 | P2-2 |
@@ -407,19 +393,19 @@
 - API / DB：`server/index.ts`（Fastify）、`server/db.ts`、`server/migrations.ts`、`server/visitRoutes.ts`
 - Schema 版本：`PRAGMA user_version`；新增迁移时 bump `SCHEMA_VERSION` 并在 `migrations` 字典注册
 - 运行时 DB：`data/spacetime-travel.sqlite`（gitignore）
-- 构建输出：`server/public/`（应 gitignore，见 P1-2）
+- 构建输出：`server/public/`（已 gitignore）
 - 类型检查：`pnpm typecheck`
-- 现有测试：
+- 测试：`pnpm test`（等同于下方 glob）；smoke：`pnpm smoke:visit-origin`（会写真实 DB，见 P1-4）
+- 现有测试文件：
   ```bash
-  node --import tsx --test server/migrations.test.ts
-  node --import tsx --test server/locations.test.ts
-  node --import tsx --test server/haversine.test.ts
-  node --import tsx --test server/legDistance.test.ts
-  node --import tsx --test server/rebuildLegs.test.ts
-  node --import tsx --test server/visitValidation.test.ts
-  node --import tsx --test server/visitRoutes.test.ts
-  node --import tsx --test client/lib/stats/compute.test.ts
-  node --import tsx scripts/smoke-visit-origin.mjs   # 会写真实 DB，见 P1-4
+  server/migrations.test.ts
+  server/locations.test.ts
+  server/haversine.test.ts
+  server/legDistance.test.ts
+  server/rebuildLegs.test.ts
+  server/visitValidation.test.ts
+  server/visitRoutes.test.ts
+  client/lib/stats/compute.test.ts
   ```
 - Specs：`docs/superpowers/specs/`、`docs/superpowers/plans/`
 - 原生模块：若 pnpm 拦截构建，`pnpm approve-builds`（`better-sqlite3` / `esbuild`）

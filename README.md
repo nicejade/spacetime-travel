@@ -1,29 +1,31 @@
 # spacetime-travel
 
-`spacetime-travel` is a local-first travel memory atlas built with Svelte, Vite, Tailwind CSS, Express, and SQLite.
+`spacetime-travel` is a local-first travel memory atlas built with Svelte, Vite, Fastify, and SQLite.
 
 The app is designed around a spatial timeline: past journeys are plotted on an offline world map, connected by time-ordered routes, and enriched with transport mode, personal reflections, food memories, tags, dates, and ratings.
 
 ## Features
 
 - Full-screen world-map canvas with pan and zoom controls.
-- Offline SVG world map, so no map API key or tile server is required.
+- Offline SVG world map — no map API key or tile server required.
 - Time-ordered travel nodes with date and location labels.
-- Directional route lines between visits.
-- Transport-aware route styles for flights, trains, ferries, drives, buses, and walking.
-- Rating-based node glow to make memorable stops stand out.
-- Year filters (all years by default), timeline strip, and detail panel.
-- Create, edit, and delete visit records without naming a trip.
-- SQLite-backed local persistence.
-- Seed data for demo visits across Asia, Europe, Africa, and the Americas spanning multiple years.
+- Directional route lines between visits, with transport-aware styles (flight, train, ferry, drive, bus, walk).
+- Year filters, timeline strip, and detail panel linked to the selected stop.
+- Visit CRUD with origin / outbound / return / inbound fields, place-name search, and map pick.
+- Rating-based node glow so memorable stops stand out.
+- **Movie mode**: animated path playback with camera follow and WebM export.
+- **Stats**: trip counts, transport mix, and great-circle distance totals.
+- **Yearly travel poster**: SVG → PNG export.
+- SQLite-backed local persistence with schema migrations (`PRAGMA user_version`).
+- Seed data for demo visits across Asia, Europe, Africa, and the Americas.
 
 ## Tech Stack
 
-- Svelte 5
-- Vite
-- Tailwind CSS 4
-- Express
-- SQLite via `better-sqlite3`
+- Svelte 5 (components still largely use Svelte 4-style `let` / `$:` syntax)
+- Vite 6
+- Tailwind CSS 4 — installed for base/reset only; UI styling lives in `client/app.css` and component scoped CSS (semantic classes, not utility-first)
+- Fastify 5 + `@fastify/static`
+- SQLite via `better-sqlite3` (WAL)
 - `d3-geo`, `topojson-client`, and `world-atlas` for the offline map
 - `@lucide/svelte` for icons
 
@@ -72,7 +74,7 @@ The frontend uses Vite proxying so browser requests to `/api/*` are forwarded to
 pnpm dev
 ```
 
-Starts both the Express API and the Vite dev server.
+Starts both the Fastify API and the Vite dev server.
 
 ```bash
 pnpm client
@@ -84,42 +86,72 @@ Starts only the Vite frontend on port `5167`.
 pnpm api
 ```
 
-Starts only the Express API on port `5168`.
+Starts only the Fastify API on port `5168`.
 
 ```bash
 pnpm build
 ```
 
-Builds the production frontend into `dist/`.
+Builds the production frontend into `server/public/` (gitignored).
 
 ```bash
 pnpm start
 ```
 
-Starts the Express API. If `dist/` exists, the server also serves the production frontend.
+Starts the Fastify API. If `server/public/` exists, the same process also serves the production frontend.
+
+```bash
+pnpm typecheck
+```
+
+Runs TypeScript checking (`tsc --noEmit`).
+
+```bash
+pnpm test
+```
+
+Runs unit tests under `server/` and `client/`.
+
+```bash
+pnpm smoke:visit-origin
+```
+
+Runs the visit-origin smoke script (writes the real local DB today; isolation is tracked as backlog).
+
+```bash
+pnpm build:gazetteer
+```
+
+Rebuilds the client gazetteer data from GeoNames dumps.
 
 ## Project Structure
 
 ```text
 .
 ├── server/
-│   ├── db.js          # SQLite schema, seed data, queries, and mutations
-│   └── index.js       # Express API and production static server
+│   ├── index.ts           # Fastify API + production static server
+│   ├── db.ts              # SQLite queries, mutations, seed
+│   ├── migrations.ts      # Schema version + migrations
+│   ├── locations.ts       # Location reuse / orphan purge
+│   ├── rebuildLegs.ts     # Sequence + legs rebuild
+│   ├── visitRoutes.ts     # Read-time outbound/return routes
+│   ├── visitValidation.ts # Write payload validation
+│   └── public/            # Production build output (gitignored)
 ├── client/
-│   ├── App.svelte     # Main app shell and state orchestration
-│   ├── app.css        # Global visual system and shared controls
-│   ├── components/
-│   │   ├── TimelineStrip.svelte
-│   │   ├── TravelCanvas.svelte
-│   │   ├── TripPanel.svelte
-│   │   └── VisitForm.svelte
+│   ├── App.svelte         # Main shell and state orchestration
+│   ├── app.css            # Global visual system
+│   ├── components/        # Map, form, movie, stats, poster, dialogs
 │   └── lib/
-│       ├── api.js
-│       └── format.js
-├── data/              # Runtime SQLite database files
+│       ├── api.ts
+│       ├── movie/         # Playback engine, path, camera, export
+│       ├── poster/        # Yearly poster SVG/PNG
+│       ├── stats/         # Stats computations
+│       └── gazetteer.ts   # Lazy place-name search
+├── data/                  # Runtime SQLite database files
+├── scripts/
 ├── index.html
 ├── package.json
-└── vite.config.js
+└── vite.config.ts
 ```
 
 ## Data Model
@@ -137,7 +169,7 @@ Core tables:
   - `outbound_*`: how you left the origin for this stop.
   - `return_*` + `returns_to_origin`: optional return leg back to the origin (defaults to returning).
   - `inbound_*`: how you arrived at this stop from the **previous** visit in the timeline (drives `legs` for non-first stops).
-- `legs`: time-ordered connections between adjacent visits (built from each visit’s `inbound_*` fields).
+- `legs`: time-ordered connections between adjacent visits (built from each visit’s `inbound_*` fields), including great-circle `distance_km`.
 
 The atlas API also returns **`visitRoutes`**: synthetic outbound/return segments per visit (origin → destination and, when `returnsToOrigin` is true, destination → origin). These are for map rendering and detail UI; **`legs`** remain the chronological spine used by movie mode.
 
@@ -186,5 +218,6 @@ Deletes a visit and rebuilds the global sequence / adjacent legs.
 ## Notes
 
 - Port `5167` is used for the Vite frontend to avoid common conflicts with other Vite apps on `5173`.
-- Runtime database files are ignored by Git.
+- Runtime database files and `server/public/` build output are ignored by Git.
 - The app is currently a local MVP and has no authentication or multi-user support.
+- The API listens on `0.0.0.0` with no auth — suitable for localhost or a trusted network only.

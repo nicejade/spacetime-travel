@@ -4,6 +4,7 @@ node_modules/
 
 # Build output
 dist/
+server/public/
 
 # Scripts
 deploy2server.sh
