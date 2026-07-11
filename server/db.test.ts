@@ -310,3 +310,72 @@ describe('db export / import replace', () => {
     assert.equal(getAtlas().visits.length, before);
   });
 });
+
+describe('db delete then recreate (undo path)', () => {
+  it('restores chronological legs when a middle visit is recreated', () => {
+    const a = createVisit(
+      payload({
+        locationName: '撤A',
+        country: '撤销测',
+        lat: 11,
+        lng: 11,
+        arrivedAt: '2040-01-01',
+        inboundTransport: 'train'
+      })
+    ).visitId;
+    const b = createVisit(
+      payload({
+        locationName: '撤B',
+        country: '撤销测',
+        lat: 12,
+        lng: 12,
+        arrivedAt: '2040-01-10',
+        inboundTransport: 'flight',
+        feeling: '中间站'
+      })
+    ).visitId;
+    const c = createVisit(
+      payload({
+        locationName: '撤C',
+        country: '撤销测',
+        lat: 13,
+        lng: 13,
+        arrivedAt: '2040-01-20',
+        inboundTransport: 'bus'
+      })
+    ).visitId;
+
+    const middle = getAtlas().visits.find((visit) => visit.id === b)!;
+    const restore = {
+      locationName: middle.location.name,
+      country: middle.location.country,
+      lat: middle.location.lat,
+      lng: middle.location.lng,
+      arrivedAt: middle.arrivedAt,
+      originName: middle.origin.name,
+      originCountry: middle.origin.country,
+      originLat: middle.origin.lat,
+      originLng: middle.origin.lng,
+      returnsToOrigin: middle.returnsToOrigin,
+      outboundTransport: middle.outboundTransport,
+      inboundTransport: middle.inboundTransport ?? undefined,
+      feeling: middle.feeling
+    };
+
+    deleteVisit(b);
+    const { visitId: restoredId } = createVisit(restore);
+
+    const atlas = getAtlas();
+    assert.equal(atlas.visits.some((visit) => visit.id === b), false);
+    const restored = atlas.visits.find((visit) => visit.id === restoredId)!;
+    assert.equal(restored.location.name, '撤B');
+    assert.equal(restored.feeling, '中间站');
+
+    const seq = new Map(atlas.visits.map((visit) => [visit.id, visit.sequence]));
+    assert.ok(seq.get(a)! < seq.get(restoredId)!);
+    assert.ok(seq.get(restoredId)! < seq.get(c)!);
+
+    assert.ok(atlas.legs.some((leg) => leg.fromVisitId === a && leg.toVisitId === restoredId));
+    assert.ok(atlas.legs.some((leg) => leg.fromVisitId === restoredId && leg.toVisitId === c));
+  });
+});

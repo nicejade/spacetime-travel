@@ -196,17 +196,15 @@
 
 ### P2-2 · 删除撤销（软删除或 Undo Toast）
 
-- **问题**：删除不可恢复；虽已有 `ConfirmDialog`，误确认仍永久丢失。与情感定位冲突。
-- **位置**：`App.svelte` `handleDelete`；可选 `server/db.ts`。
-- **建议做法（由易到难）**：
-  - **短线**：删除成功后 Toast「撤销」→ 短时内用导出的 visit payload 再 `createVisit`（注意 location 复用）。
-  - **长线**：`deleted_at` 软删除 + 清理任务。
-- **验收**：删除后可在时限内恢复节点与相邻 legs 语义正确。
-- **依赖**：P0-2 会让恢复时 location 行为更清晰。
+- **状态**：~~已完成（2026-07-11，短线）~~
+- **实现**：
+  - `client/lib/visitPayload.ts`：Visit → create payload
+  - 删除成功后侧栏 notice 显示「撤销」（8s）；点击后 `createVisit` 恢复
+  - location 复用由 `ensureLocation` 处理；sequence/legs 按 `arrived_at` 重建
+  - 测试：`visitPayload.test.ts`；`db.test.ts` 中间站删除再创建补边
+- **未做**：`deleted_at` 软删除长线。
 
----
-
-## P3 · 正确性与交互打磨
+### P3 · 正确性与交互打磨
 
 ### P3-1 · 地图 pan 边界 clamp
 
@@ -362,6 +360,7 @@
 | Smoke DB 隔离 | `SPACETIME_DB_PATH` + 临时库；默认 sqlite 不被 smoke 污染 |
 | db / movie 单测 | `db.test.ts` CRUD 路径；`pathSampler` / `timeline` 纯函数 |
 | JSON 导出导入 | `/api/export` + `/api/import`（替换策略）；侧栏入口 |
+| 删除撤销 | 删除后 8s Toast「撤销」→ `createVisit` 恢复 |
 
 ---
 
@@ -377,7 +376,7 @@
 | 6 | ~~文档 + gitignore + scripts~~ | ~~P1-1, P1-2, P1-3, P4-4~~ |
 | 7 | ~~Smoke 隔离 + db/movie 单测~~ | ~~P1-4, P1-5~~ |
 | 8 | ~~JSON 导出导入~~ | ~~P2-1~~ |
-| 9 | 删除撤销 | P2-2 |
+| 9 | ~~删除撤销~~ | ~~P2-2~~ |
 | 10 | pan clamp + 电影 viewport + path 预计算 | P3-1, P3-2, P3-4 |
 | 11 | 共享 years / server 类型边界 | P1-6, P1-7 |
 | 12 | 前端拆分或 runes（选其一） | P4-1 或 P4-2 |
@@ -408,6 +407,7 @@
   client/lib/stats/compute.test.ts
   client/lib/movie/pathSampler.test.ts
   client/lib/movie/timeline.test.ts
+  client/lib/visitPayload.test.ts
   ```
 - Specs：`docs/superpowers/specs/`、`docs/superpowers/plans/`
 - 原生模块：若 pnpm 拦截构建，`pnpm approve-builds`（`better-sqlite3` / `esbuild`）

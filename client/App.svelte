@@ -21,7 +21,7 @@
   import TripPanel from './components/TripPanel.svelte';
   import ConfirmDialog from './components/ConfirmDialog.svelte';
   import VisitForm from './components/VisitForm.svelte';
-  import { deleteVisit, fetchAtlas, fetchExportDocument, importAtlasDocument } from '$lib/api';
+  import { createVisit, deleteVisit, fetchAtlas, fetchExportDocument, importAtlasDocument } from '$lib/api';
   import { confirm } from '$lib/confirm';
   import { formatMonth } from '$lib/format';
   import {
@@ -35,7 +35,8 @@
   import { plotVisits } from '$lib/movie/plotVisits';
   import { buildPosterFilename, generatePoster } from '$lib/poster/renderPoster';
   import type { MovieFrameState } from '$lib/movie/types';
-  import type { Atlas, AtlasStats, Visit, VisitMutationResult } from '$lib/types';
+  import type { Atlas, AtlasStats, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
+  import { visitToPayload } from '$lib/visitPayload';
   import { visitYear } from '$lib/years';
 
   let atlas: Atlas | null = null;
@@ -68,6 +69,10 @@
   let statsYear: number | 'all' = 'all';
   let importInput: HTMLInputElement | null = null;
   let backupBusy = false;
+  let undoPayload: VisitPayload | null = null;
+  let undoBusy = false;
+
+  const UNDO_WINDOW_MS = 8000;
 
   onMount(() => {
     loadAtlas();
@@ -192,12 +197,17 @@
     editorOpen = false;
   }
 
-  function flash(message: string) {
+  function flash(message: string, options?: { undo?: VisitPayload }) {
     notice = message;
+    undoPayload = options?.undo ?? null;
     clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => {
-      notice = '';
-    }, 2600);
+    noticeTimer = setTimeout(
+      () => {
+        notice = '';
+        undoPayload = null;
+      },
+      options?.undo ? UNDO_WINDOW_MS : 2600
+    );
   }
 
   function handleSaved(result: VisitMutationResult) {
@@ -379,13 +389,30 @@
     });
     if (!confirmed) return;
 
+    const restorePayload = visitToPayload(visit);
+
     try {
       const result = await deleteVisit(visit.id);
       atlas = result.atlas;
       selectedVisitId = atlas.visits.at(-1)?.id ?? null;
-      flash('旅行节点已删除');
+      flash(`已删除「${visit.location.name}」`, { undo: restorePayload });
     } catch (deleteError) {
       flash(deleteError instanceof Error ? deleteError.message : '删除失败');
+    }
+  }
+
+  async function undoDelete() {
+    if (!undoPayload || undoBusy) return;
+    undoBusy = true;
+    try {
+      const result = await createVisit(undoPayload);
+      atlas = result.atlas;
+      selectedVisitId = result.visitId;
+      flash('已恢复旅行节点');
+    } catch (undoError) {
+      flash(undoError instanceof Error ? undoError.message : '撤销失败');
+    } finally {
+      undoBusy = false;
     }
   }
 
@@ -611,7 +638,14 @@
     {:else if error}
       <p class="state-text error">{error}</p>
     {:else if notice}
-      <p class="state-text">{notice}</p>
+      <div class="state-text notice-row" role="status">
+        <span>{notice}</span>
+        {#if undoPayload}
+          <button type="button" class="undo-button" disabled={undoBusy} on:click={undoDelete}>
+            撤销
+          </button>
+        {/if}
+      </div>
     {/if}
   </aside>
 
@@ -814,6 +848,35 @@
 
   .state-text.error {
     color: #9b352e;
+  }
+
+  .notice-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .undo-button {
+    flex: 0 0 auto;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: #1f6f82;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .undo-button:hover:not(:disabled) {
+    color: #155566;
+  }
+
+  .undo-button:disabled {
+    opacity: 0.55;
+    cursor: default;
   }
 
   @media (max-width: 980px) {
