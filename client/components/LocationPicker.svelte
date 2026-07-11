@@ -1,6 +1,8 @@
 <script lang="ts">
   import { Search, MapPin, Loader2 } from '@lucide/svelte';
   import { countryFeatures, countryAt, pathGenerator, projection, MAP_WIDTH, MAP_HEIGHT } from '$lib/geo';
+  import { clampContainedPan } from '$lib/map/clampPan';
+  import { panForZoomAt } from '$lib/map/panZoom';
   import { searchPlaces, type Place } from '$lib/gazetteer';
 
   export let name: string = '';
@@ -106,22 +108,18 @@
   function handleWheel(event: WheelEvent) {
     event.preventDefault();
     const view = screenToView(event.clientX, event.clientY);
-    const mapX = (view.x - pan.x) / zoom;
-    const mapY = (view.y - pan.y) / zoom;
-    const nextZoom = Math.min(8, Math.max(1, zoom * (event.deltaY > 0 ? 0.85 : 1.18)));
+    const prevZoom = zoom;
+    const nextZoom = Math.min(8, Math.max(1, prevZoom * (event.deltaY > 0 ? 0.85 : 1.18)));
     zoom = nextZoom;
-    pan = { x: view.x - mapX * nextZoom, y: view.y - mapY * nextZoom };
-    clampPan();
+    pan = clampContainedPan(
+      panForZoomAt(pan, prevZoom, nextZoom, view),
+      nextZoom,
+      { mapWidth: MAP_WIDTH, mapHeight: MAP_HEIGHT }
+    );
   }
 
   function clampPan() {
-    // Keep the world within view: at zoom 1 pan is locked to 0.
-    const maxX = MAP_WIDTH * (zoom - 1);
-    const maxY = MAP_HEIGHT * (zoom - 1);
-    pan = {
-      x: Math.min(0, Math.max(-maxX, pan.x)),
-      y: Math.min(0, Math.max(-maxY, pan.y))
-    };
+    pan = clampContainedPan(pan, zoom, { mapWidth: MAP_WIDTH, mapHeight: MAP_HEIGHT });
   }
 
   function startDrag(event: PointerEvent) {

@@ -39,3 +39,20 @@ export function clampMapPan(
     y: Math.min(maxY, Math.max(minY, pan.y))
   };
 }
+
+/**
+ * Keep the map contained in the top-left origin frame (picker mini-map).
+ * At scale 1, pan is locked to (0, 0).
+ */
+export function clampContainedPan(
+  pan: Point2D,
+  scale: number,
+  options: { mapWidth: number; mapHeight: number }
+): Point2D {
+  const maxX = options.mapWidth * (scale - 1);
+  const maxY = options.mapHeight * (scale - 1);
+  return {
+    x: Math.min(0, Math.max(-maxX, pan.x)) || 0,
+    y: Math.min(0, Math.max(-maxY, pan.y)) || 0
+  };
+}

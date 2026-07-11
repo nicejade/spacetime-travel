@@ -309,9 +309,9 @@
 <main class="app-shell">
   <TravelCanvas
     visits={visibleVisits}
+    plottedVisits={plottedVisits}
     legs={visibleLegs}
     visitRoutes={visibleVisitRoutes}
-    yearColors={yearColors}
     selectedVisitId={selectedVisit?.id ?? null}
     movieMode={$movie.active}
     movieFrame={$movie.frame}

@@ -282,10 +282,12 @@
 
 ### P4-3 · 去重 pan/zoom 与 plotVisits
 
-- **问题**：pan/zoom 在 `TravelCanvas` 与 `LocationPicker` 重复；`plotVisits` 在 App 与 TravelCanvas 重复计算。
-- **建议做法**：共享 `client/lib/map/panZoom.ts`；plot 结果单一来源向下传。
-- **验收**：两处地图交互一致；无双重投影漂移。
-- **依赖**：无。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：
+  - `client/lib/map/panZoom.ts`：`panForZoomAt`（缩放锚点）；`clampContainedPan`（picker 装入式 clamp）
+  - TravelCanvas / LocationPicker 共用缩放数学；各自保留不同 clamp / 倍率
+  - App 传入 `plottedVisits`；TravelCanvas 不再二次 `plotVisits`
+- **测试**：`panZoom.test.ts`；`clampPan.test.ts` 增补 contained 用例
 
 ### P4-4 · Tailwind 策略决策（二选一并文档化）
 
@@ -364,6 +366,7 @@
 | gazetteer normalize | 中英搜索统一 `normalize`；`matchPlaces` + 单测 |
 | TransportSelect 动态图标 | 去掉弃用的 `svelte:component` |
 | CI typecheck + test | `.github/workflows/ci.yml`（pnpm + Node 22） |
+| pan/zoom + plotVisits 去重 | `panForZoomAt` / `clampContainedPan`；App→Canvas 传 plottedVisits |
 
 ---
 
@@ -389,7 +392,8 @@
 | 16 | ~~gazetteer normalize 统一~~ | ~~P3-8~~ |
 | 17 | ~~TransportSelect 去 svelte:component~~ | ~~P4-6~~ |
 | 18 | ~~CI typecheck + test~~ | ~~P5-13~~ |
-| 19 | pan/zoom 去重 / 产品增强 | P4-3, P5-* |
+| 19 | ~~pan/zoom + plotVisits 去重~~ | ~~P4-3~~ |
+| 20 | 产品增强按需 | P5-* |
 
 ---
 
@@ -422,6 +426,7 @@
   client/lib/gazetteer.test.ts
   client/lib/visitPayload.test.ts
   client/lib/map/clampPan.test.ts
+  client/lib/map/panZoom.test.ts
   client/lib/poster/preview.test.ts
   shared/years.test.ts
   ```

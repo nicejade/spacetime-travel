@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { clampMapPan } from './clampPan';
+import { clampMapPan, clampContainedPan } from './clampPan';
 
 describe('clampMapPan', () => {
   const base = {
@@ -40,5 +40,31 @@ describe('clampMapPan', () => {
       y: (800 - 1200 * scale) / 2
     };
     assert.deepEqual(clampMapPan(centered, scale, base), centered);
+  });
+});
+
+describe('clampContainedPan', () => {
+  it('locks pan to origin at scale 1', () => {
+    assert.deepEqual(
+      clampContainedPan({ x: -50, y: 20 }, 1, { mapWidth: 2400, mapHeight: 1200 }),
+      { x: 0, y: 0 }
+    );
+  });
+
+  it('keeps the map edges from leaving the origin corner when zoomed in', () => {
+    const clamped = clampContainedPan(
+      { x: -10000, y: -10000 },
+      2,
+      { mapWidth: 2400, mapHeight: 1200 }
+    );
+    assert.deepEqual(clamped, { x: -2400, y: -1200 });
+  });
+
+  it('leaves a valid contained pan unchanged', () => {
+    const pan = { x: -100, y: -50 };
+    assert.deepEqual(
+      clampContainedPan(pan, 2, { mapWidth: 2400, mapHeight: 1200 }),
+      pan
+    );
   });
 });

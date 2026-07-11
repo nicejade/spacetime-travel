@@ -5,17 +5,17 @@
   import { formatMonth, transportClass, transportDash } from '$lib/format';
   import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator, projection } from '$lib/geo';
   import { clampMapPan } from '$lib/map/clampPan';
+  import { panForZoomAt } from '$lib/map/panZoom';
   import { plotOrigins } from '$lib/map/plotOrigins';
   import { buildRouteGeometry } from '$lib/movie/pathSampler';
-  import { plotVisits } from '$lib/movie/plotVisits';
   import type { PlottedVisit } from '$lib/movie/types';
   import type { MovieFrameState } from '$lib/movie/types';
   import type { Leg, Location, Visit, VisitRoute } from '$lib/types';
 
   export let visits: Visit[] = [];
+  export let plottedVisits: PlottedVisit[] = [];
   export let legs: Leg[] = [];
   export let visitRoutes: VisitRoute[] = [];
-  export let yearColors: Record<string, string> = {};
   export let selectedVisitId: number | null = null;
   export let movieMode = false;
   export let movieFrame: MovieFrameState | null = null;
@@ -46,7 +46,6 @@
   let controlStatus = 'Ready';
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
 
-  $: plottedVisits = plotVisits(visits, yearColors);
   $: plottedOrigins = plotOrigins(visits);
   $: plottedById = new Map(plottedVisits.map((visit) => [visit.id, visit]));
   $: zoomLabel = `${Math.round(scale * 100)}%`;
@@ -115,15 +114,11 @@
 
   function zoomAt(factor: number, clientX = viewportWidth / 2, clientY = viewportHeight / 2) {
     if (movieMode) return;
-    const nextScale = clamp(scale * factor, 0.22, 4.6);
-    const worldX = (clientX - pan.x) / scale;
-    const worldY = (clientY - pan.y) / scale;
+    const prevScale = scale;
+    const nextScale = clamp(prevScale * factor, 0.22, 4.6);
     scale = nextScale;
     pan = clampPan(
-      {
-        x: clientX - worldX * nextScale,
-        y: clientY - worldY * nextScale
-      },
+      panForZoomAt(pan, prevScale, nextScale, { x: clientX, y: clientY }),
       nextScale
     );
     setControlStatus(`Zoom ${Math.round(nextScale * 100)}%`);
