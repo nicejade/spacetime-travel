@@ -14,7 +14,8 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "$lib/*": ["client/lib/*"]
+      "$lib/*": ["client/lib/*"],
+      "$shared/*": ["shared/*"]
     }
   },
   "include": [
@@ -22,6 +23,7 @@
     "client/**/*.svelte",
     "client/**/*.d.ts",
     "server/**/*.ts",
+    "shared/**/*.ts",
     "vite.config.ts"
   ]
 }

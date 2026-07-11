@@ -149,6 +149,8 @@ Rebuilds the client gazetteer data from GeoNames dumps.
 │       ├── poster/        # Yearly poster SVG/PNG
 │       ├── stats/         # Stats computations
 │       └── gazetteer.ts   # Lazy place-name search
+├── shared/
+│   └── years.ts           # Year palette shared by API + UI
 ├── data/                  # Runtime SQLite database files
 ├── scripts/
 ├── index.html

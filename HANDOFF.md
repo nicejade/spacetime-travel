@@ -167,17 +167,13 @@
 
 ### P1-6 · 消除 YEAR_PALETTE 双份维护
 
-- **问题**：`server/db.ts` L15–44 与 `client/lib/years.ts` 重复 palette / `visitYear` / `yearColor`。
-- **建议做法**：抽到共享模块（如 `shared/years.ts`），或服务端只返回 year 列表、颜色仅前端算（API 契约需一致）。
-- **验收**：改一处 palette，两端着色一致；无复制粘贴块。
-- **依赖**：无。小会话。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：`shared/years.ts`（palette / `visitYear` / `yearColor` / `buildYearColors`）；`client/lib/years.ts` re-export；`server/db.ts` 从 shared 导入；测试 `shared/years.test.ts`。
 
 ### P1-7 · 服务端不再 import 客户端类型
 
-- **问题**：`server/visitRoutes.ts` `import type` 自 `../client/lib/types.js`，边界耦合。
-- **建议做法**：`shared/types.ts` 或 `server/types.ts` 自洽定义 `VisitRoute` 所需最小形状。
-- **验收**：server 构建/测试不依赖 `client/` 路径。
-- **依赖**：无。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：`Location` / `VisitRoute` 定义在 `server/types.ts`；`visitRoutes.ts` 只依赖 server types。
 
 ---
 
@@ -356,6 +352,7 @@
 | JSON 导出导入 | `/api/export` + `/api/import`（替换策略）；侧栏入口 |
 | 删除撤销 | 删除后 8s Toast「撤销」→ `createVisit` 恢复 |
 | 地图 pan clamp / 电影 viewport / path 预计算 | `clampMapPan`；resize → `setViewport`；`countryPaths` |
+| 共享 years / server 类型边界 | `shared/years.ts`；`VisitRoute` 迁入 `server/types.ts` |
 
 ---
 
@@ -373,7 +370,7 @@
 | 8 | ~~JSON 导出导入~~ | ~~P2-1~~ |
 | 9 | ~~删除撤销~~ | ~~P2-2~~ |
 | 10 | ~~pan clamp + 电影 viewport + path 预计算~~ | ~~P3-1, P3-2, P3-4~~ |
-| 11 | 共享 years / server 类型边界 | P1-6, P1-7 |
+| 11 | ~~共享 years / server 类型边界~~ | ~~P1-6, P1-7~~ |
 | 12 | 前端拆分或 runes（选其一） | P4-1 或 P4-2 |
 | 13 | 产品增强按需 | P5-* |
 
@@ -404,6 +401,7 @@
   client/lib/movie/timeline.test.ts
   client/lib/visitPayload.test.ts
   client/lib/map/clampPan.test.ts
+  shared/years.test.ts
   ```
 - Specs：`docs/superpowers/specs/`、`docs/superpowers/plans/`
 - 原生模块：若 pnpm 拦截构建，`pnpm approve-builds`（`better-sqlite3` / `esbuild`）

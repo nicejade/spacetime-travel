@@ -1,4 +1,4 @@
-import type { Location, VisitRoute } from '../client/lib/types.js';
+import type { Location, VisitRoute } from './types.js';
 
 export interface VisitRouteSource {
   id: number;

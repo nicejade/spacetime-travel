@@ -3,6 +3,25 @@ export interface HttpError extends Error {
   statusCode?: number;
 }
 
+/** Minimal location shape for atlas routes (server-owned; not imported from client). */
+export interface Location {
+  id: number;
+  name: string;
+  country: string;
+  lat: number;
+  lng: number;
+  kind: string;
+}
+
+export interface VisitRoute {
+  visitId: number;
+  kind: 'outbound' | 'return';
+  from: Location;
+  to: Location;
+  transport: string;
+  note: string;
+}
+
 export interface VisitPayloadInput {
   locationName?: string;
   country?: string;
