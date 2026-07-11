@@ -116,20 +116,12 @@
 
 ### P0-5 · 写入校验加固
 
-- **问题**：
-  - `arrivedAt` 只校验非空，无日期格式（~692）；`visitYear` 靠 `slice(0, 4)`。
-  - `departedAt` 与 `arrivedAt` 无先后关系校验（前后端皆无）。
-  - `transport` 字段无枚举白名单（~699, 703）。
-  - 路由 `:id`：`Number("abc")` → NaN → 404 而非 400（`server/index.ts` ~35, 40）。
-  - 无 Fastify JSON Schema（靠 `as VisitPayloadInput`）。
-- **位置**：`server/db.ts` `readVisitPayload`；`server/index.ts`；可选 `VisitForm.svelte`。
-- **建议做法**：
-  1. 服务端校验 ISO 日期（至少 `YYYY-MM-DD`）；`departedAt >= arrivedAt`。
-  2. transport 白名单与前端 `Transport` 类型对齐。
-  3. `:id` 解析失败返回 400。
-  4. （可选）Fastify schema 或共享 zod；SQLite `CHECK` 作第二道防线。
-- **验收**：非法日期 / 颠倒离站日 / 非法 transport / 非数字 id → 明确 400；合法路径回归通过。
-- **依赖**：无。可与 P0-2 同会话末尾顺手做，或独立小会话。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：
+  - `server/visitValidation.ts`：`parseIsoDate`、`assertDateOrder`、`parseTransport`、`parseVisitId`
+  - `readVisitPayload` 校验日期格式 / 先后 / transport 白名单；`cleanRating` fallback `4.5`
+  - `index.ts`：非数字 `:id` → 400
+  - 测试：`server/visitValidation.test.ts`
 
 ### P0-6 · 外键列索引
 
@@ -263,10 +255,8 @@
 
 ### P3-5 · 表单校验补齐（前端）
 
-- **问题**：无 `departedAt > arrivedAt`；勾选返回起点时 `returnTransport` 可空；create/edit 评分默认 4.5 vs 4 不一致（`VisitForm.svelte`）。
-- **建议做法**：与 P0-5 对齐的前端校验与默认值统一。
-- **验收**：非法组合无法提交；默认值一致。
-- **依赖**：可与 P0-5 同做。
+- **状态**：~~已完成（2026-07-11，随 P0-5）~~
+- **实现**：`VisitForm` 提交前日期/先后/transport 校验；create/edit 评分默认统一 `4.5`；`returnTransport` 仍可空（fallback 去程）。
 
 ### P3-6 · 模态 a11y（focus trap）
 
@@ -387,6 +377,7 @@
 | locations 实体化 | `ensureLocation` 复用、`purgeOrphanLocations`、迁移 2 去重 + `idx_locations_name_country` |
 | legs 大圆距离 | Haversine 写入 `distance_km`；Stats 总里程 + 交通里程 |
 | legs/sequence 重建优化 | `rebuildLegs.ts`：窗口函数写 sequence + 单次 JOIN 批量建 leg |
+| 写入校验加固 | `visitValidation.ts`：日期 / transport / visitId；VisitForm 对称校验 |
 
 ---
 
@@ -398,7 +389,7 @@
 | 2 | ~~locations 实体化 + 测试~~ | ~~P0-2~~ |
 | 3 | ~~legs 距离 + Stats 里程~~ | ~~P0-3~~ |
 | 4 | ~~rebuildSequencesAndLegs 优化~~ | ~~P0-4~~ |
-| 5 | 写入校验 | P0-5, P3-5 |
+| 5 | ~~写入校验~~ | ~~P0-5, P3-5~~ |
 | 6 | 文档 + gitignore + scripts | P1-1, P1-2, P1-3, P4-4 |
 | 7 | Smoke 隔离 + db/movie 单测 | P1-4, P1-5 |
 | 8 | JSON 导出导入 | P2-1 |
@@ -425,6 +416,7 @@
   node --import tsx --test server/haversine.test.ts
   node --import tsx --test server/legDistance.test.ts
   node --import tsx --test server/rebuildLegs.test.ts
+  node --import tsx --test server/visitValidation.test.ts
   node --import tsx --test server/visitRoutes.test.ts
   node --import tsx --test client/lib/stats/compute.test.ts
   node --import tsx scripts/smoke-visit-origin.mjs   # 会写真实 DB，见 P1-4
