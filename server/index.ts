@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createVisit, deleteVisit, getAtlas, updateVisit } from './db.js';
 import type { HttpError } from './types.js';
 import type { VisitPayloadInput } from './types.js';
+import { parseVisitId } from './visitValidation.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicPath = path.resolve(__dirname, 'public');
@@ -32,12 +33,14 @@ app.post('/api/visits', async (request, reply) => {
 });
 
 app.put<{ Params: { id: string } }>('/api/visits/:id', async (request) => {
-  const result = updateVisit(Number(request.params.id), request.body as VisitPayloadInput);
+  const visitId = parseVisitId(request.params.id);
+  const result = updateVisit(visitId, request.body as VisitPayloadInput);
   return { ok: true, ...result, atlas: getAtlas() };
 });
 
 app.delete<{ Params: { id: string } }>('/api/visits/:id', async (request) => {
-  const result = deleteVisit(Number(request.params.id));
+  const visitId = parseVisitId(request.params.id);
+  const result = deleteVisit(visitId);
   return { ok: true, ...result, atlas: getAtlas() };
 });
 
