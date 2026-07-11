@@ -1,7 +1,11 @@
 import type Database from 'better-sqlite3';
+import {
+  ensureLocationUniqueIndex,
+  mergeDuplicateLocations
+} from './locations.js';
 
 /** Current schema version. Bump when adding a migration below. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 type MigrationFn = (db: Database.Database) => void;
 
@@ -82,8 +86,18 @@ const migration1: MigrationFn = (db) => {
   `);
 };
 
+/**
+ * Migration 2: treat locations as shared entities (HANDOFF P0-2).
+ * Merge historical duplicate (name, country) rows, then enforce uniqueness.
+ */
+const migration2: MigrationFn = (db) => {
+  mergeDuplicateLocations(db);
+  ensureLocationUniqueIndex(db);
+};
+
 const migrations: Record<number, MigrationFn> = {
-  1: migration1
+  1: migration1,
+  2: migration2
 };
 
 export function getUserVersion(db: Database.Database): number {

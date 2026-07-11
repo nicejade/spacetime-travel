@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ensureLocation, purgeOrphanLocations } from './locations.js';
 import { migrate } from './migrations.js';
 import type { HttpError, ParsedVisitPayload, VisitPayloadInput } from './types.js';
 import { buildVisitRoutes } from './visitRoutes.js';
@@ -361,11 +362,6 @@ const seedVisits: SeedVisit[] = [
   }
 ];
 
-const insertLocation = db.prepare(`
-  INSERT INTO locations (name, country, lat, lng, kind)
-  VALUES (@name, @country, @lat, @lng, @kind)
-`);
-
 const insertVisit = db.prepare(`
   INSERT INTO visits (
     location_id, origin_location_id, returns_to_origin,
@@ -399,25 +395,14 @@ const seedDatabase = db.transaction(() => {
     const [name, country, lat, lng] = visit.location;
     const [originName, originCountry, originLat, originLng] = visit.origin;
 
-    const locationId = Number(
-      insertLocation.run({
-        name,
-        country,
-        lat,
-        lng,
-        kind: 'city'
-      }).lastInsertRowid
-    );
-
-    const originLocationId = Number(
-      insertLocation.run({
-        name: originName,
-        country: originCountry,
-        lat: originLat,
-        lng: originLng,
-        kind: 'city'
-      }).lastInsertRowid
-    );
+    const locationId = ensureLocation(db, { name, country, lat, lng, kind: 'city' });
+    const originLocationId = ensureLocation(db, {
+      name: originName,
+      country: originCountry,
+      lat: originLat,
+      lng: originLng,
+      kind: 'city'
+    });
 
     insertVisit.run({
       locationId,
@@ -708,25 +693,21 @@ function rebuildSequencesAndLegs(options?: {
 export const createVisit = db.transaction((rawPayload: VisitPayloadInput) => {
   const payload = readVisitPayload(rawPayload);
 
-  const locationId = Number(
-    insertLocation.run({
-      name: payload.locationName,
-      country: payload.country,
-      lat: payload.lat,
-      lng: payload.lng,
-      kind: 'city'
-    }).lastInsertRowid
-  );
+  const locationId = ensureLocation(db, {
+    name: payload.locationName,
+    country: payload.country,
+    lat: payload.lat,
+    lng: payload.lng,
+    kind: 'city'
+  });
 
-  const originLocationId = Number(
-    insertLocation.run({
-      name: payload.originName,
-      country: payload.originCountry,
-      lat: payload.originLat,
-      lng: payload.originLng,
-      kind: 'city'
-    }).lastInsertRowid
-  );
+  const originLocationId = ensureLocation(db, {
+    name: payload.originName,
+    country: payload.originCountry,
+    lat: payload.originLat,
+    lng: payload.originLng,
+    kind: 'city'
+  });
 
   const visitId = Number(
     insertVisit.run({
@@ -769,38 +750,28 @@ export const updateVisit = db.transaction((visitId: number, rawPayload: VisitPay
     throw httpError(404, '旅行节点不存在');
   }
 
-  db.prepare(
-    `
-      UPDATE locations
-      SET name = @name, country = @country, lat = @lat, lng = @lng
-      WHERE id = @id
-    `
-  ).run({
-    id: current.location_id,
+  const locationId = ensureLocation(db, {
     name: payload.locationName,
     country: payload.country,
     lat: payload.lat,
-    lng: payload.lng
+    lng: payload.lng,
+    kind: 'city'
   });
 
-  db.prepare(
-    `
-      UPDATE locations
-      SET name = @name, country = @country, lat = @lat, lng = @lng
-      WHERE id = @id
-    `
-  ).run({
-    id: current.origin_location_id,
+  const originLocationId = ensureLocation(db, {
     name: payload.originName,
     country: payload.originCountry,
     lat: payload.originLat,
-    lng: payload.originLng
+    lng: payload.originLng,
+    kind: 'city'
   });
 
   db.prepare(
     `
       UPDATE visits
       SET
+        location_id = @locationId,
+        origin_location_id = @originLocationId,
         returns_to_origin = @returnsToOrigin,
         outbound_transport = @outboundTransport,
         outbound_note = @outboundNote,
@@ -822,6 +793,8 @@ export const updateVisit = db.transaction((visitId: number, rawPayload: VisitPay
     `
   ).run({
     visitId,
+    locationId,
+    originLocationId,
     returnsToOrigin: payload.returnsToOrigin ? 1 : 0,
     outboundTransport: payload.outboundTransport,
     outboundNote: payload.outboundNote,
@@ -839,6 +812,8 @@ export const updateVisit = db.transaction((visitId: number, rawPayload: VisitPay
     memory: payload.memory,
     tags: payload.tags
   });
+
+  purgeOrphanLocations(db, [current.location_id, current.origin_location_id]);
 
   rebuildSequencesAndLegs({
     focusVisitId: visitId,
@@ -858,6 +833,7 @@ export const deleteVisit = db.transaction((visitId: number) => {
 
   db.prepare('DELETE FROM legs WHERE from_visit_id = ? OR to_visit_id = ?').run(visitId, visitId);
   db.prepare('DELETE FROM visits WHERE id = ?').run(visitId);
+  purgeOrphanLocations(db, [current.location_id, current.origin_location_id]);
   rebuildSequencesAndLegs();
 
   return { visitId };

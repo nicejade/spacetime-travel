@@ -65,6 +65,7 @@ describe('migrate', () => {
     assert.ok(indexes.includes('idx_legs_from_visit_id'));
     assert.ok(indexes.includes('idx_legs_to_visit_id'));
     assert.ok(indexes.includes('idx_visits_arrived_at'));
+    assert.ok(indexes.includes('idx_locations_name_country'));
 
     const tables = db
       .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name`)

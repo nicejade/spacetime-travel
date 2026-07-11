@@ -132,7 +132,7 @@ data/spacetime-travel.sqlite
 
 Core tables:
 
-- `locations`: geographic points (destinations and trip origins).
+- `locations`: geographic points (destinations and trip origins), **shared entities** keyed by `name + country` (reused across visits; orphans purged on delete/update).
 - `visits`: travel memories with a **destination** (`location_id`) and **origin** (`origin_location_id`), ordered globally by arrival date. Each visit stores:
   - `outbound_*`: how you left the origin for this stop.
   - `return_*` + `returns_to_origin`: optional return leg back to the origin (defaults to returning).

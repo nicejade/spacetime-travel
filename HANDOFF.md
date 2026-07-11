@@ -43,7 +43,7 @@
 - `visits`：记忆节点；含 destination + origin；`outbound_*` / `return_*` / `inbound_*`
 - `legs`：按 `arrived_at` 排序后的相邻站间连线（由目标 visit 的 `inbound_*` 重建）
 - `visitRoutes`：读时合成（去程/回程），不落库；电影模式只走 `legs`
-- Schema：`PRAGMA user_version` 迁移（`server/migrations.ts`）；当前 `SCHEMA_VERSION = 1`
+- Schema：`PRAGMA user_version` 迁移（`server/migrations.ts`）；当前 `SCHEMA_VERSION = 2`；locations 按 `name + country` 复用
 
 **Visit origin 备忘**：
 
@@ -78,7 +78,7 @@
 
 - **状态**：~~已完成（2026-07-11）~~
 - **实现**：`server/migrations.ts`（`SCHEMA_VERSION`、`bootstrapSchema`、`migrate`）；`server/db.ts` 启动时调用 `migrate(db)`；测试 `server/migrations.test.ts`。
-- **当前版本**：`user_version = 1`（迁移 1 = FK 列索引，见 P0-6）。
+- **当前版本**：`user_version = 2`（迁移 1 = FK 索引；迁移 2 = locations 去重 + 唯一索引）。
 - **后续**：新增 schema 变更时在 `migrations` 字典增加 `N`，并 bump `SCHEMA_VERSION`；破坏性无法自动迁移时在 README/本文件注明。
 
 ### P0-6 · 外键列索引
@@ -88,26 +88,13 @@
 
 ### P0-2 · `locations` 实体化（去重、复用、孤儿回收）
 
-- **问题**：名为共享实体，实为每条 visit 的私有快照。
-  - `createVisit` 每次无条件 INSERT 目的地 + 起点两行（`server/db.ts` ~766–784）。
-  - `deleteVisit` 不删 location，孤儿永久累积（~907–918）。
-  - `updateVisit` 原地 UPDATE location 行（~827–853）——仅在「永不共享」时安全。
-  - `originSuggestions` 用 `DISTINCT l.id`，同名地点多 id → 建议列表重复恶化。
-- **位置**：`server/db.ts` `createVisit` / `updateVisit` / `deleteVisit` / `originSuggestionsQuery`。
-- **建议做法（推荐）**：
-  1. 插入前按 `(name, country)` 或 `(name, country, lat, lng)` 查找复用；没有再 INSERT。
-  2. 可选：`UNIQUE` 约束或应用层去重（注意浮点坐标容差）。
-  3. `updateVisit`：改为「解析目标 location → 换绑 `location_id` / `origin_location_id`」，避免改共享行影响其他 visit。
-  4. `deleteVisit` 后：删除未被任何 visit 引用的 location。
-  5. 一次性数据清理迁移：合并历史重复 location，重绑 FK（依赖 P0-1）。
-- **备选（更激进）**：取消 `locations` 表，坐标/名称内嵌进 `visits`（诚实快照）。若选此路，需同步改 API 形状与前端类型。
-- **验收**：
-  - 连续创建两次「杭州→上海」→ `locations` 中杭州/上海各至多一行（或按选定唯一键）。
-  - 删除唯一引用某地的 visit → 该 location 被回收；仍被其他 visit 引用则保留。
-  - `originSuggestions` 无同名重复 id。
-  - 编辑一站起点名称不影响其他 visit 已绑定的同名地点（若采用换绑策略）。
-- **依赖**：P0-1。
-- **建议会话**：一会话专注 locations；附带 `node:test` 覆盖 create/update/delete 复用与回收。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：
+  - `server/locations.ts`：`ensureLocation`（按 `name + country` 复用）、`purgeOrphanLocations`、`mergeDuplicateLocations`
+  - 迁移 2：合并历史重复行 + `UNIQUE INDEX idx_locations_name_country`
+  - `createVisit` / seed 走 `ensureLocation`；`updateVisit` 换绑 FK 后回收孤儿；`deleteVisit` 删除后回收孤儿
+  - 测试：`server/locations.test.ts`
+- **注意**：复用时不改已有行的坐标（避免共享地点被一处编辑污染）；改名/换地靠换绑到新/已有实体。
 
 ### P0-3 · 兑现或清理 `legs` 派生字段
 
@@ -406,6 +393,7 @@
 | 端口 5167/5168 | `package.json` 与 README 已对齐（以仓库当前文件为准） |
 | Schema 迁移机制 | `server/migrations.ts` + `PRAGMA user_version`；空库/旧库可升到当前版本 |
 | FK 列索引 | 迁移 1：`idx_visits_location_id` 等四条 |
+| locations 实体化 | `ensureLocation` 复用、`purgeOrphanLocations`、迁移 2 去重 + `idx_locations_name_country` |
 
 ---
 
@@ -414,7 +402,7 @@
 | 顺序 | 会话主题 | 包含 ID |
 | --- | --- | --- |
 | 1 | ~~Schema 迁移骨架 + FK 索引~~ | ~~P0-1, P0-6~~ |
-| 2 | locations 实体化 + 测试 | P0-2,（P1-4/P1-5 相关部分） |
+| 2 | ~~locations 实体化 + 测试~~ | ~~P0-2~~ |
 | 3 | legs 距离 + Stats 里程 | P0-3, P5-11（部分） |
 | 4 | 写入校验 | P0-5, P3-5 |
 | 5 | 文档 + gitignore + scripts | P1-1, P1-2, P1-3, P4-4 |
@@ -439,6 +427,7 @@
 - 现有测试：
   ```bash
   node --import tsx --test server/migrations.test.ts
+  node --import tsx --test server/locations.test.ts
   node --import tsx --test server/visitRoutes.test.ts
   node --import tsx --test client/lib/stats/compute.test.ts
   node --import tsx scripts/smoke-visit-origin.mjs   # 会写真实 DB，见 P1-4
