@@ -48,7 +48,7 @@
 **Visit origin 备忘**：
 
 - `VisitForm` 的 `inbound_*` 仅在非首站显示
-- Smoke：`node --import tsx scripts/smoke-visit-origin.mjs` → `smoke ok`（会写真实 DB，见 backlog）
+- Smoke：`node --import tsx scripts/smoke-visit-origin.mjs` → `smoke ok`（临时库，见 P1-4）
 - **升级**：additive 变更由迁移自动应用；仅非可迁移破坏性变更才需删 `data/spacetime-travel.sqlite*`
 
 ---
@@ -153,22 +153,17 @@
 
 ### P1-4 · Smoke 脚本隔离数据库
 
-- **问题**：`scripts/smoke-visit-origin.mjs` 向真实 `data/spacetime-travel.sqlite` 写入，污染用户/开发数据。
-- **位置**：`scripts/smoke-visit-origin.mjs`；`server/db.ts` 模块级开库路径。
-- **建议做法**：支持 `SPACETIME_DB_PATH`（或 `:memory:`）环境变量；smoke 使用临时文件并在结束时删除；`db.ts` 据此开库。
-- **验收**：跑 smoke 前后，默认 `data/spacetime-travel.sqlite` 的 visit 数量不变。
-- **依赖**：小改 `db.ts` 开库路径；建议在 P0 测试基建前完成。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：`server/db.ts` 支持 `SPACETIME_DB_PATH`（含 `:memory:`）；`scripts/smoke-visit-origin.mjs` 用临时 sqlite，结束后删除，并断言默认库 visit 数不变。
 
 ### P1-5 · 测试基建（db 事务 + 电影核心纯函数）
 
-- **问题**：仅有 `server/visitRoutes.test.ts`、`client/lib/stats/compute.test.ts`；`db.ts` CRUD/重建、movie `pathSampler`/`timeline`/`cameraRig`、poster bounds **无单测**。Spec 曾要求 movie 单测未兑现。
-- **位置**：新建 `server/db.test.ts` 等；`package.json` test 脚本（P1-3）。
-- **建议做法**：
-  1. db 测试用临时 sqlite 文件 + 导出可注入的 db 工厂（可能需弱化模块副作用）。
-  2. 优先覆盖：create → sequence/legs、中间插入日期重排、delete 级联、locations 复用（若 P0-2 已做）。
-  3. movie：`crossesDateline` / `buildRouteGeometry`、timeline 阶段边界。
-- **验收**：`pnpm test` 覆盖上述关键路径；CI 或文档要求提交前运行。
-- **依赖**：P1-3、P1-4；locations 相关用例依赖 P0-2。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：
+  - `server/db.test.ts`：create → sequence/legs、中间插入重排、delete 补边、locations 复用与孤儿回收（经 `SPACETIME_DB_PATH` 临时库）
+  - `client/lib/movie/pathSampler.test.ts`：日界线拆段、`sampleRouteAtProgress`、`clampPointToMap`
+  - `client/lib/movie/timeline.test.ts`：分段构建、阶段边界、`dwellCaptionOpacity`
+- **验收**：`pnpm test` 覆盖上述路径。
 
 ### P1-6 · 消除 YEAR_PALETTE 双份维护
 
@@ -364,6 +359,8 @@
 | 写入校验加固 | `visitValidation.ts`：日期 / transport / visitId；VisitForm 对称校验 |
 | README / 工程卫生 | Fastify + `server/public` 文档；gitignore public；`pnpm test` / smoke scripts |
 | Tailwind 策略 | 方案 A：base/reset only，样式以语义 CSS 为准 |
+| Smoke DB 隔离 | `SPACETIME_DB_PATH` + 临时库；默认 sqlite 不被 smoke 污染 |
+| db / movie 单测 | `db.test.ts` CRUD 路径；`pathSampler` / `timeline` 纯函数 |
 
 ---
 
@@ -377,7 +374,7 @@
 | 4 | ~~rebuildSequencesAndLegs 优化~~ | ~~P0-4~~ |
 | 5 | ~~写入校验~~ | ~~P0-5, P3-5~~ |
 | 6 | ~~文档 + gitignore + scripts~~ | ~~P1-1, P1-2, P1-3, P4-4~~ |
-| 7 | Smoke 隔离 + db/movie 单测 | P1-4, P1-5 |
+| 7 | ~~Smoke 隔离 + db/movie 单测~~ | ~~P1-4, P1-5~~ |
 | 8 | JSON 导出导入 | P2-1 |
 | 9 | 删除撤销 | P2-2 |
 | 10 | pan clamp + 电影 viewport + path 预计算 | P3-1, P3-2, P3-4 |
@@ -392,12 +389,13 @@
 - 主画布：`client/components/TravelCanvas.svelte`
 - API / DB：`server/index.ts`（Fastify）、`server/db.ts`、`server/migrations.ts`、`server/visitRoutes.ts`
 - Schema 版本：`PRAGMA user_version`；新增迁移时 bump `SCHEMA_VERSION` 并在 `migrations` 字典注册
-- 运行时 DB：`data/spacetime-travel.sqlite`（gitignore）
+- 运行时 DB：`data/spacetime-travel.sqlite`（gitignore）；可用 `SPACETIME_DB_PATH` 覆盖（测试 / smoke）
 - 构建输出：`server/public/`（已 gitignore）
 - 类型检查：`pnpm typecheck`
-- 测试：`pnpm test`（等同于下方 glob）；smoke：`pnpm smoke:visit-origin`（会写真实 DB，见 P1-4）
+- 测试：`pnpm test`；smoke：`pnpm smoke:visit-origin`（临时库，不写默认 DB）
 - 现有测试文件：
   ```bash
+  server/db.test.ts
   server/migrations.test.ts
   server/locations.test.ts
   server/haversine.test.ts
@@ -406,6 +404,8 @@
   server/visitValidation.test.ts
   server/visitRoutes.test.ts
   client/lib/stats/compute.test.ts
+  client/lib/movie/pathSampler.test.ts
+  client/lib/movie/timeline.test.ts
   ```
 - Specs：`docs/superpowers/specs/`、`docs/superpowers/plans/`
 - 原生模块：若 pnpm 拦截构建，`pnpm approve-builds`（`better-sqlite3` / `esbuild`）

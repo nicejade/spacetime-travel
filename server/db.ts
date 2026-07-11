@@ -116,10 +116,12 @@ interface VisitRow {
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dataDir = path.resolve(__dirname, '..', 'data');
-const dbPath = path.join(dataDir, 'spacetime-travel.sqlite');
+const defaultDbPath = path.join(path.resolve(__dirname, '..', 'data'), 'spacetime-travel.sqlite');
+const dbPath = process.env.SPACETIME_DB_PATH?.trim() || defaultDbPath;
 
-fs.mkdirSync(dataDir, { recursive: true });
+if (dbPath !== ':memory:') {
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+}
 
 export const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');

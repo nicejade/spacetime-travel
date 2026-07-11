@@ -116,7 +116,7 @@ Runs unit tests under `server/` and `client/`.
 pnpm smoke:visit-origin
 ```
 
-Runs the visit-origin smoke script (writes the real local DB today; isolation is tracked as backlog).
+Runs the visit-origin smoke script against a temporary sqlite file (`SPACETIME_DB_PATH`); the default `data/spacetime-travel.sqlite` is left unchanged.
 
 ```bash
 pnpm build:gazetteer
