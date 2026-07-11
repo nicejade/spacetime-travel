@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { migrate } from './migrations.js';
 import type { HttpError, ParsedVisitPayload, VisitPayloadInput } from './types.js';
 import { buildVisitRoutes } from './visitRoutes.js';
 
@@ -120,63 +121,7 @@ fs.mkdirSync(dataDir, { recursive: true });
 export const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS locations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    country TEXT NOT NULL,
-    lat REAL NOT NULL,
-    lng REAL NOT NULL,
-    kind TEXT DEFAULT 'city',
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS visits (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    location_id INTEGER NOT NULL,
-    origin_location_id INTEGER NOT NULL,
-    returns_to_origin INTEGER NOT NULL DEFAULT 1,
-    outbound_transport TEXT NOT NULL DEFAULT 'flight',
-    outbound_note TEXT DEFAULT '',
-    return_transport TEXT,
-    return_note TEXT DEFAULT '',
-    inbound_transport TEXT,
-    inbound_note TEXT DEFAULT '',
-    arrived_at TEXT NOT NULL,
-    departed_at TEXT,
-    feeling TEXT DEFAULT '',
-    food TEXT DEFAULT '',
-    rating REAL NOT NULL DEFAULT 4,
-    mood TEXT DEFAULT '',
-    weather TEXT DEFAULT '',
-    memory TEXT DEFAULT '',
-    tags TEXT DEFAULT '',
-    sequence INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE RESTRICT,
-    FOREIGN KEY (origin_location_id) REFERENCES locations(id) ON DELETE RESTRICT
-  );
-
-  CREATE TABLE IF NOT EXISTS legs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    from_visit_id INTEGER NOT NULL,
-    to_visit_id INTEGER NOT NULL,
-    transport TEXT NOT NULL DEFAULT 'flight',
-    duration_hours REAL,
-    distance_km REAL,
-    note TEXT DEFAULT '',
-    sequence INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (from_visit_id) REFERENCES visits(id) ON DELETE CASCADE,
-    FOREIGN KEY (to_visit_id) REFERENCES visits(id) ON DELETE CASCADE
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_visits_arrived_at ON visits(arrived_at);
-  CREATE INDEX IF NOT EXISTS idx_legs_sequence ON legs(sequence);
-`);
+migrate(db);
 
 interface SeedVisit {
   location: [string, string, number, number];

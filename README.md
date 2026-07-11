@@ -147,7 +147,9 @@ Years and year colors are derived from `arrived_at` at query time (not stored as
 
 The database is seeded only when there are no visits.
 
-**Schema upgrades are not migrated.** After pulling a breaking change, delete `data/spacetime-travel.sqlite*` and restart so the app recreates and reseeds the database.
+**Schema migrations** use SQLite `PRAGMA user_version` (`server/migrations.ts`). On startup the app bootstraps tables if needed, then applies any pending migrations in order. Existing visit data is preserved across additive upgrades (new indexes, columns via `ALTER TABLE`, backfills).
+
+Only delete `data/spacetime-travel.sqlite*` when a release notes a **non-migratable** breaking change, or when you intentionally want a clean reseed.
 
 ## API Overview
 
