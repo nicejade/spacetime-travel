@@ -4,6 +4,7 @@
   import { geoGraticule } from 'd3-geo';
   import { formatMonth, transportClass, transportDash } from '$lib/format';
   import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator, projection } from '$lib/geo';
+  import { clampMapPan } from '$lib/map/clampPan';
   import { plotOrigins } from '$lib/map/plotOrigins';
   import { buildRouteGeometry } from '$lib/movie/pathSampler';
   import { plotVisits } from '$lib/movie/plotVisits';
@@ -22,6 +23,7 @@
   export let onSelectVisit: (id: number) => void = () => {};
   export let onCreate: () => void = () => {};
   export let onStartMovie: (viewport: { width: number; height: number }) => void = () => {};
+  export let onViewportChange: (viewport: { width: number; height: number }) => void = () => {};
 
   const dispatch = createEventDispatcher<{ svgready: SVGSVGElement }>();
 
@@ -30,6 +32,7 @@
   const graticule = geoGraticule().step([30, 30]);
   const graticulePath = pathGenerator(graticule());
   const spherePath = pathGenerator({ type: 'Sphere' });
+  const countryPaths = countryFeatures.map((feature) => pathGenerator(feature) ?? '');
 
   let shell: HTMLElement;
   let worldStage: SVGSVGElement;
@@ -64,9 +67,12 @@
     const resizeObserver = new ResizeObserver(([entry]) => {
       viewportWidth = entry.contentRect.width;
       viewportHeight = entry.contentRect.height;
+      onViewportChange({ width: viewportWidth, height: viewportHeight });
       if (!hasFit) {
         fitWorld();
         hasFit = true;
+      } else if (!movieMode) {
+        pan = clampPan(pan, scale);
       }
     });
 
@@ -85,13 +91,25 @@
     return Math.min(max, Math.max(min, value));
   }
 
+  function clampPan(nextPan = pan, nextScale = scale) {
+    return clampMapPan(nextPan, nextScale, {
+      mapWidth,
+      mapHeight,
+      viewportWidth,
+      viewportHeight
+    });
+  }
+
   function fitWorld() {
     const nextScale = clamp(Math.min((viewportWidth * 0.86) / mapWidth, (viewportHeight * 0.74) / mapHeight), 0.24, 1.1);
     scale = nextScale;
-    pan = {
-      x: (viewportWidth - mapWidth * nextScale) / 2,
-      y: (viewportHeight - mapHeight * nextScale) / 2
-    };
+    pan = clampPan(
+      {
+        x: (viewportWidth - mapWidth * nextScale) / 2,
+        y: (viewportHeight - mapHeight * nextScale) / 2
+      },
+      nextScale
+    );
     setControlStatus('View reset');
   }
 
@@ -101,10 +119,13 @@
     const worldX = (clientX - pan.x) / scale;
     const worldY = (clientY - pan.y) / scale;
     scale = nextScale;
-    pan = {
-      x: clientX - worldX * nextScale,
-      y: clientY - worldY * nextScale
-    };
+    pan = clampPan(
+      {
+        x: clientX - worldX * nextScale,
+        y: clientY - worldY * nextScale
+      },
+      nextScale
+    );
     setControlStatus(`Zoom ${Math.round(nextScale * 100)}%`);
   }
 
@@ -126,10 +147,10 @@
 
   function movePan(event: PointerEvent) {
     if (!dragging || movieMode) return;
-    pan = {
+    pan = clampPan({
       x: pan.x + event.clientX - lastPointer.x,
       y: pan.y + event.clientY - lastPointer.y
-    };
+    });
     lastPointer = { x: event.clientX, y: event.clientY };
   }
 
@@ -194,10 +215,10 @@
 
   function focusVisit(visit: (typeof plottedVisits)[number], targetScale = Math.max(scale, 0.86)) {
     scale = clamp(targetScale, 0.42, 2.6);
-    pan = {
+    pan = clampPan({
       x: viewportWidth / 2 - visit.x * scale,
       y: viewportHeight / 2 - visit.y * scale
-    };
+    });
   }
 
   function selectNode(visit: (typeof plottedVisits)[number]) {
@@ -277,8 +298,8 @@
       <path class="sphere" d={spherePath} />
       <path class="graticule" d={graticulePath} />
 
-      {#each countryFeatures as country, index (index)}
-        <path class="country" d={pathGenerator(country)} />
+      {#each countryPaths as d, index (index)}
+        <path class="country" {d} />
       {/each}
 
       <g class="visit-routes">

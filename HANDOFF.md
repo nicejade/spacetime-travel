@@ -208,17 +208,13 @@
 
 ### P3-1 · 地图 pan 边界 clamp
 
-- **问题**：`movePan` 无边界，地图可被拖出可视区（`TravelCanvas.svelte` ~127–134）。
-- **建议做法**：按 `displayScale` 与视口尺寸 clamp `pan.x/y`；zoom 后同样约束。
-- **验收**：任意拖拽后地图仍有可见陆地/内容；重置仍正确。
-- **依赖**：无。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：`client/lib/map/clampPan.ts`；`TravelCanvas` 在 drag / zoom / focus / resize 后 clamp；测试 `clampPan.test.ts`。
 
 ### P3-2 · 电影模式 `setViewport` 接入
 
-- **问题**：`MovieEngine.setViewport()` 已实现（`engine.ts` ~76–79）但 `App.svelte` 从未调用；窗口 resize 时镜头可能不准。
-- **建议做法**：movie 激活时监听 resize / 读 canvas 尺寸并调用 `setViewport`。
-- **验收**：播放中改变窗口，光点与镜头仍对齐路径。
-- **依赖**：无。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：`TravelCanvas` resize 回调 `onViewportChange`；`App.handleMovieViewport` 调用 `movieEngine.setViewport` 并重算当前帧。
 
 ### P3-3 · `resolveLegs` O(n²)
 
@@ -229,10 +225,8 @@
 
 ### P3-4 · TravelCanvas 国家 path 预计算
 
-- **问题**：模板中每次调用 `pathGenerator(country)`（~280–282）；`LocationPicker` 已预计算 `countryPaths`。
-- **建议做法**：与 LocationPicker 一样预计算 path `d` 字符串。
-- **验收**：拖拽/缩放更顺；视觉不变。
-- **依赖**：无。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：与 LocationPicker 一样预计算 `countryPaths`（`d` 字符串），模板不再每次 `pathGenerator(country)`。
 
 ### P3-5 · 表单校验补齐（前端）
 
@@ -361,6 +355,7 @@
 | db / movie 单测 | `db.test.ts` CRUD 路径；`pathSampler` / `timeline` 纯函数 |
 | JSON 导出导入 | `/api/export` + `/api/import`（替换策略）；侧栏入口 |
 | 删除撤销 | 删除后 8s Toast「撤销」→ `createVisit` 恢复 |
+| 地图 pan clamp / 电影 viewport / path 预计算 | `clampMapPan`；resize → `setViewport`；`countryPaths` |
 
 ---
 
@@ -377,7 +372,7 @@
 | 7 | ~~Smoke 隔离 + db/movie 单测~~ | ~~P1-4, P1-5~~ |
 | 8 | ~~JSON 导出导入~~ | ~~P2-1~~ |
 | 9 | ~~删除撤销~~ | ~~P2-2~~ |
-| 10 | pan clamp + 电影 viewport + path 预计算 | P3-1, P3-2, P3-4 |
+| 10 | ~~pan clamp + 电影 viewport + path 预计算~~ | ~~P3-1, P3-2, P3-4~~ |
 | 11 | 共享 years / server 类型边界 | P1-6, P1-7 |
 | 12 | 前端拆分或 runes（选其一） | P4-1 或 P4-2 |
 | 13 | 产品增强按需 | P5-* |
@@ -408,6 +403,7 @@
   client/lib/movie/pathSampler.test.ts
   client/lib/movie/timeline.test.ts
   client/lib/visitPayload.test.ts
+  client/lib/map/clampPan.test.ts
   ```
 - Specs：`docs/superpowers/specs/`、`docs/superpowers/plans/`
 - 原生模块：若 pnpm 拦截构建，`pnpm approve-builds`（`better-sqlite3` / `esbuild`）

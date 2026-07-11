@@ -234,6 +234,12 @@
     movieRaf = requestAnimationFrame(runMovieLoop);
   }
 
+  function handleMovieViewport(viewport: { width: number; height: number }) {
+    if (!movieActive || !movieEngine) return;
+    movieEngine.setViewport(viewport.width, viewport.height);
+    movieFrame = movieEngine.setElapsedMs(movieEngine.getElapsedMs());
+  }
+
   function runMovieLoop(now = performance.now()) {
     if (!movieActive || !movieEngine || moviePaused || movieExporting) return;
 
@@ -490,6 +496,7 @@
     onSelectVisit={selectVisit}
     onCreate={openCreate}
     onStartMovie={startMovie}
+    onViewportChange={handleMovieViewport}
     on:svgready={(event) => {
       movieSvg = event.detail;
     }}
