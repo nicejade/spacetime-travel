@@ -18,14 +18,18 @@ import type {
   ResolvedLeg
 } from './types';
 
-function resolveLegs(visits: PlottedVisit[], legs: Leg[]): ResolvedLeg[] {
+export function resolveLegs(visits: PlottedVisit[], legs: Leg[]): ResolvedLeg[] {
+  const byEndpoints = new Map<string, Leg>();
+  for (const item of legs) {
+    byEndpoints.set(`${item.fromVisitId}:${item.toVisitId}`, item);
+  }
+
   const resolved: ResolvedLeg[] = [];
 
   for (let index = 0; index < visits.length - 1; index += 1) {
     const from = visits[index];
     const to = visits[index + 1];
-    const leg =
-      legs.find((item) => item.fromVisitId === from.id && item.toVisitId === to.id) ?? null;
+    const leg = byEndpoints.get(`${from.id}:${to.id}`) ?? null;
     const transport = leg?.transport || to.inboundTransport || 'walk';
 
     resolved.push({

@@ -1,8 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { confirmStore } from '$lib/confirm';
-
-  let dialogEl: HTMLDivElement | null = null;
+  import { focusTrap } from '$lib/focusTrap';
 
   $: open = $confirmStore.open;
   $: options = $confirmStore.options;
@@ -21,23 +19,6 @@
       close(false);
     }
   }
-
-  function handleKeydown(event: KeyboardEvent) {
-    if (!open) return;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      close(false);
-    }
-  }
-
-  onMount(() => {
-    window.addEventListener('keydown', handleKeydown);
-    return () => window.removeEventListener('keydown', handleKeydown);
-  });
-
-  $: if (open && dialogEl) {
-    queueMicrotask(() => dialogEl?.focus());
-  }
 </script>
 
 {#if open && options}
@@ -47,13 +28,13 @@
     on:click={handleBackdropClick}
   >
     <div
-      bind:this={dialogEl}
       class="confirm-dialog glass-panel"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="confirm-title"
       aria-describedby="confirm-message"
       tabindex="-1"
+      use:focusTrap={{ onEscape: () => close(false) }}
     >
       <p id="confirm-title" class="confirm-title">{title}</p>
       <p id="confirm-message" class="confirm-message">{message}</p>

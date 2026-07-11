@@ -4,6 +4,7 @@
   import TagInput from './TagInput.svelte';
   import TransportSelect from './TransportSelect.svelte';
   import { createVisit, updateVisit } from '$lib/api';
+  import { focusTrap } from '$lib/focusTrap';
   import type { Location, Transport, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
 
   export let mode: 'create' | 'edit' = 'create';
@@ -179,11 +180,19 @@
 </script>
 
 <div class="form-backdrop" role="presentation" on:click={handleBackdropClick}>
-  <form class="visit-form glass-panel" aria-label="旅行节点表单" on:submit|preventDefault={submit}>
+  <form
+    class="visit-form glass-panel"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="visit-form-title"
+    tabindex="-1"
+    use:focusTrap={{ onEscape: onClose }}
+    on:submit|preventDefault={submit}
+  >
     <div class="form-head">
       <div>
         <p>{mode === 'edit' ? '编辑节点' : '新增节点'}</p>
-        <h2>{mode === 'edit' ? visit?.location.name : '旅行时空记录'}</h2>
+        <h2 id="visit-form-title">{mode === 'edit' ? visit?.location.name : '旅行时空记录'}</h2>
       </div>
       <button type="button" class="icon-button" aria-label="关闭" title="关闭" on:click={onClose}>
         <X size={18} />
@@ -409,6 +418,7 @@
     overflow: auto;
     border-radius: 8px;
     padding: 18px;
+    outline: none;
   }
 
   .form-head,

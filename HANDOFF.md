@@ -214,10 +214,10 @@
 
 ### P3-3 · `resolveLegs` O(n²)
 
-- **问题**：`engine.ts` ~27–28 内层 `legs.find`。
-- **建议做法**：预处理 `Map` 按 from/to 索引。
-- **验收**：节点较多时电影模式启动无可见卡顿；行为不变。
-- **依赖**：无。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：`resolveLegs` 预建 `fromVisitId:toVisitId` → `Leg` 的 `Map`，相邻站 O(1) 查找；导出供单测。
+- **测试**：`client/lib/movie/engine.test.ts`（匹配 / fallback / 无关 leg）。
+- **验收**：行为与原先一致；节点较多时电影模式启动为 O(n+m) 而非 O(n·m)。
 
 ### P3-4 · TravelCanvas 国家 path 预计算
 
@@ -231,10 +231,13 @@
 
 ### P3-6 · 模态 a11y（focus trap）
 
-- **问题**：`VisitForm` 缺 `aria-modal` / focus trap；`ConfirmDialog` 有 `aria-modal` 但 Tab 可逃到背景。
-- **位置**：`VisitForm.svelte`、`ConfirmDialog.svelte`。
-- **验收**：打开模态后 Tab 循环在模态内；Esc 关闭（若已有则保持）。
-- **依赖**：无。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：
+  - `client/lib/focusTrap.ts`：`resolveTabTarget` + `createFocusTrap` + Svelte `use:focusTrap`
+  - `ConfirmDialog` / `VisitForm` 接入；Tab 在模态内循环；Esc 关闭；关闭后恢复先前焦点
+  - `VisitForm`：`role="dialog"` + `aria-modal` + `aria-labelledby`
+- **测试**：`client/lib/focusTrap.test.ts`
+- **非目标**：`PosterPreview` 本项未改。
 
 ### P3-7 · UX 小一致性
 
@@ -354,6 +357,8 @@
 | 地图 pan clamp / 电影 viewport / path 预计算 | `clampMapPan`；resize → `setViewport`；`countryPaths` |
 | 共享 years / server 类型边界 | `shared/years.ts`；`VisitRoute` 迁入 `server/types.ts` |
 | App 编排拆分（部分） | `movie/session.ts` + `poster/preview.ts`；App 行数下降 |
+| resolveLegs Map 索引 | 电影模式 leg 解析 O(n+m)；`engine.test.ts` |
+| 模态 focus trap | `focusTrap` action；VisitForm / ConfirmDialog Tab 循环 + Esc |
 
 ---
 
@@ -373,7 +378,10 @@
 | 10 | ~~pan clamp + 电影 viewport + path 预计算~~ | ~~P3-1, P3-2, P3-4~~ |
 | 11 | ~~共享 years / server 类型边界~~ | ~~P1-6, P1-7~~ |
 | 12 | ~~App 电影/海报编排抽出~~（TravelCanvas/VisitForm 仍待拆） | ~~P4-2（部分）~~ |
-| 13 | 产品增强按需 | P5-* |
+| 13 | ~~resolveLegs Map 索引~~ | ~~P3-3~~ |
+| 14 | ~~模态 focus trap~~ | ~~P3-6~~ |
+| 15 | UX 一致性 / gazetteer | P3-7, P3-8 |
+| 16 | 产品增强按需 | P5-* |
 
 ---
 
@@ -400,6 +408,8 @@
   client/lib/stats/compute.test.ts
   client/lib/movie/pathSampler.test.ts
   client/lib/movie/timeline.test.ts
+  client/lib/movie/engine.test.ts
+  client/lib/focusTrap.test.ts
   client/lib/visitPayload.test.ts
   client/lib/map/clampPan.test.ts
   client/lib/poster/preview.test.ts
