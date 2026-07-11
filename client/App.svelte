@@ -29,6 +29,7 @@
   import { createPosterPreview } from '$lib/poster/preview';
   import type { Atlas, AtlasStats, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
   import { visitToPayload } from '$lib/visitPayload';
+  import { yearAfterSave } from '$lib/yearFilter';
   import { visitYear } from '$lib/years';
 
   let atlas: Atlas | null = null;
@@ -181,7 +182,10 @@
   function handleSaved(result: VisitMutationResult) {
     atlas = result.atlas;
     selectedVisitId = result.visitId;
-    selectedYear = 'all';
+    const saved = result.atlas.visits.find((visit) => visit.id === result.visitId);
+    if (saved) {
+      selectedYear = yearAfterSave(selectedYear, saved.arrivedAt);
+    }
     editorOpen = false;
     flash('旅行节点已保存');
   }
@@ -320,6 +324,13 @@
       movie.setSvg(event.detail);
     }}
   />
+
+  {#if error && !atlas && !loading}
+    <div class="map-error" role="alert">
+      <p>{error}</p>
+      <button type="button" class="primary-button" on:click={loadAtlas}>重试</button>
+    </div>
+  {/if}
 
   {#if $movie.active}
     <MovieOverlay
@@ -461,9 +472,11 @@
 
     {#if loading}
       <p class="state-text">正在载入旅行图谱...</p>
-    {:else if error}
+    {/if}
+    {#if error}
       <p class="state-text error">{error}</p>
-    {:else if notice}
+    {/if}
+    {#if notice}
       <div class="state-text notice-row" role="status">
         <span>{notice}</span>
         {#if undoPayload}
@@ -521,6 +534,28 @@
     position: relative;
     min-height: 100dvh;
     overflow: hidden;
+  }
+
+  .map-error {
+    position: absolute;
+    z-index: 15;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 14px;
+    padding: 24px;
+    background: rgba(231, 240, 227, 0.72);
+    color: #9b352e;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .map-error p {
+    margin: 0;
+    max-width: 28rem;
+    line-height: 1.5;
   }
 
   .atlas-sidebar {

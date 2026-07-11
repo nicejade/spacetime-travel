@@ -18,6 +18,7 @@
       class:active={visit.id === selectedVisitId}
       style={`--trip-color: ${yearColors[String(visitYear(visit.arrivedAt))] || '#2d7c89'}`}
       aria-label={`${visit.location.name}，${formatMonth(visit.arrivedAt)}`}
+      aria-current={visit.id === selectedVisitId ? 'true' : undefined}
       on:click={() => onSelectVisit(visit.id)}
     >
       <span class="dot"></span>

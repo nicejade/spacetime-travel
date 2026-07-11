@@ -241,11 +241,13 @@
 
 ### P3-7 · UX 小一致性
 
-- `handleSaved` 强制 `selectedYear = 'all'`（`App.svelte` ~202）破坏筛选上下文 → 应保留当前年（若新节点属于该年则选中）。
-- `flash()` notice 与 error 共用 UI 槽 → 分离或排队。
-- `TimelineStrip` 选中项补 `aria-current`。
-- 加载失败时地图区也应有错误/重试态。
-- **依赖**：无。可拆成多个微会话。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：
+  - `yearAfterSave`：保存后保留年份筛选；节点跨年时切到节点所在年（`client/lib/yearFilter.ts`）
+  - 侧栏 `error` / `notice` / `loading` 独立显示，不再互斥
+  - `TimelineStrip` 选中项 `aria-current="true"`
+  - 无 atlas 且加载失败时地图区中央错误 +「重试」
+- **测试**：`client/lib/yearFilter.test.ts`
 
 ### P3-8 · gazetteer 搜索小优化
 
@@ -359,6 +361,7 @@
 | App 编排拆分（部分） | `movie/session.ts` + `poster/preview.ts`；App 行数下降 |
 | resolveLegs Map 索引 | 电影模式 leg 解析 O(n+m)；`engine.test.ts` |
 | 模态 focus trap | `focusTrap` action；VisitForm / ConfirmDialog Tab 循环 + Esc |
+| UX 小一致性 | 保存保留年份；notice/error 分槽；TimelineStrip aria-current；地图重试 |
 
 ---
 
@@ -380,8 +383,9 @@
 | 12 | ~~App 电影/海报编排抽出~~（TravelCanvas/VisitForm 仍待拆） | ~~P4-2（部分）~~ |
 | 13 | ~~resolveLegs Map 索引~~ | ~~P3-3~~ |
 | 14 | ~~模态 focus trap~~ | ~~P3-6~~ |
-| 15 | UX 一致性 / gazetteer | P3-7, P3-8 |
-| 16 | 产品增强按需 | P5-* |
+| 15 | ~~UX 小一致性~~ | ~~P3-7~~ |
+| 16 | gazetteer 搜索优化 | P3-8 |
+| 17 | 产品增强按需 | P5-* |
 
 ---
 
@@ -410,6 +414,7 @@
   client/lib/movie/timeline.test.ts
   client/lib/movie/engine.test.ts
   client/lib/focusTrap.test.ts
+  client/lib/yearFilter.test.ts
   client/lib/visitPayload.test.ts
   client/lib/map/clampPan.test.ts
   client/lib/poster/preview.test.ts
