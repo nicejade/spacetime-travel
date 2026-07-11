@@ -91,7 +91,7 @@
   >
     <span class="trigger-content">
       <span class="option-icon" aria-hidden="true">
-        <svelte:component this={SelectedIcon} size={16} />
+        <SelectedIcon size={16} />
       </span>
       <span class="trigger-label">{selected.label}</span>
     </span>
@@ -114,7 +114,7 @@
             on:click={() => select(transport.value)}
           >
             <span class="option-icon" aria-hidden="true">
-              <svelte:component this={Icon} size={16} />
+              <Icon size={16} />
             </span>
             <span class="option-label">{transport.label}</span>
             {#if transport.value === value}

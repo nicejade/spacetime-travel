@@ -301,10 +301,9 @@
 
 ### P4-6 · `TransportSelect` 弃用 API
 
-- **问题**：仍用 `<svelte:component>`（Svelte 5 弃用路径）。
-- **位置**：`TransportSelect.svelte` ~94, 117。
-- **验收**：无弃用警告；图标切换正常。
-- **依赖**：可与 P4-1 一起。
+- **状态**：~~已完成（2026-07-11）~~
+- **实现**：`<SelectedIcon />` / `<Icon />` 替代 `<svelte:component this={...}>`。
+- **验收**：无 `svelte:component`；图标随选项切换。
 
 ---
 
@@ -363,6 +362,7 @@
 | 模态 focus trap | `focusTrap` action；VisitForm / ConfirmDialog Tab 循环 + Esc |
 | UX 小一致性 | 保存保留年份；notice/error 分槽；TimelineStrip aria-current；地图重试 |
 | gazetteer normalize | 中英搜索统一 `normalize`；`matchPlaces` + 单测 |
+| TransportSelect 动态图标 | 去掉弃用的 `svelte:component` |
 
 ---
 
@@ -386,7 +386,8 @@
 | 14 | ~~模态 focus trap~~ | ~~P3-6~~ |
 | 15 | ~~UX 小一致性~~ | ~~P3-7~~ |
 | 16 | ~~gazetteer normalize 统一~~ | ~~P3-8~~ |
-| 17 | 产品增强按需 | P5-* |
+| 17 | ~~TransportSelect 去 svelte:component~~ | ~~P4-6~~ |
+| 18 | pan/zoom 去重 / CI / 产品增强 | P4-3, P5-13, P5-* |
 
 ---
 
