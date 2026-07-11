@@ -47,7 +47,7 @@
         departedAt: visit.departedAt || '',
         feeling: visit.feeling || '',
         food: visit.food || '',
-        rating: visit.rating || 4,
+        rating: visit.rating || 4.5,
         mood: visit.mood || '',
         weather: visit.weather || '',
         memory: visit.memory || '',
@@ -83,9 +83,53 @@
     };
   }
 
+  const TRANSPORT_SET = new Set(['flight', 'train', 'ferry', 'drive', 'bus', 'walk']);
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+  function isValidIsoDate(value: string): boolean {
+    if (!ISO_DATE.test(value)) return false;
+    const [y, m, d] = value.split('-').map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d));
+    return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+  }
+
+  function validateBeforeSubmit(): string | null {
+    if (!isValidIsoDate(String(values.arrivedAt || ''))) {
+      return '到达时间格式无效，请使用 YYYY-MM-DD';
+    }
+    const departed = String(values.departedAt || '').trim();
+    if (departed) {
+      if (!isValidIsoDate(departed)) {
+        return '离开时间格式无效，请使用 YYYY-MM-DD';
+      }
+      if (departed < String(values.arrivedAt)) {
+        return '离开时间不能早于到达时间';
+      }
+    }
+    const outbound = String(values.outboundTransport || '').trim();
+    if (outbound && !TRANSPORT_SET.has(outbound)) {
+      return '去程交通方式无效';
+    }
+    const inbound = String(values.inboundTransport || '').trim();
+    if (inbound && !TRANSPORT_SET.has(inbound)) {
+      return '站间交通方式无效';
+    }
+    const ret = String(values.returnTransport || '').trim();
+    if (ret && !TRANSPORT_SET.has(ret)) {
+      return '返程交通方式无效';
+    }
+    return null;
+  }
+
   async function submit() {
     if (Number(values.lat) === Number(values.originLat) && Number(values.lng) === Number(values.originLng)) {
       error = '起点与目的地不能相同';
+      return;
+    }
+
+    const validationError = validateBeforeSubmit();
+    if (validationError) {
+      error = validationError;
       return;
     }
 
