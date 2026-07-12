@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { Save, X } from '@lucide/svelte';
   import LocationPicker from './LocationPicker.svelte';
   import TagInput from './TagInput.svelte';
   import TransportSelect from './TransportSelect.svelte';
-  import { createVisit, updateVisit } from '$lib/api';
+  import { createVisit, isAbortError, updateVisit } from '$lib/api';
   import { focusTrap } from '$lib/focusTrap';
   import type { LonLatPick } from '$lib/map/pickLonLat';
   import type { Location, Transport, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
@@ -20,6 +21,19 @@
   let error = '';
   let lastKey = '';
   let values: VisitPayload = buildValues();
+  let saveController: AbortController | null = null;
+
+  function abortSave() {
+    saveController?.abort();
+    saveController = null;
+  }
+
+  function requestClose() {
+    abortSave();
+    onClose();
+  }
+
+  onDestroy(abortSave);
 
   $: key = `${mode}:${visit?.id ?? 'new'}:${initialPlace ? `${initialPlace.lat},${initialPlace.lng}` : ''}`;
   $: if (key !== lastKey) {
@@ -136,17 +150,29 @@
       return;
     }
 
+    abortSave();
+    const controller = new AbortController();
+    saveController = controller;
     busy = true;
     error = '';
 
     try {
       const payload = { ...values };
-      const result = mode === 'edit' && visit ? await updateVisit(visit.id, payload) : await createVisit(payload);
+      const options = { signal: controller.signal };
+      const result =
+        mode === 'edit' && visit
+          ? await updateVisit(visit.id, payload, options)
+          : await createVisit(payload, options);
+      if (saveController !== controller) return;
       onSaved(result);
     } catch (submitError) {
+      if (isAbortError(submitError) || controller.signal.aborted) return;
       error = submitError instanceof Error ? submitError.message : '保存失败';
     } finally {
-      busy = false;
+      if (saveController === controller) {
+        busy = false;
+        saveController = null;
+      }
     }
   }
 
@@ -176,7 +202,7 @@
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
-      onClose();
+      requestClose();
     }
   }
 </script>
@@ -188,7 +214,7 @@
     aria-modal="true"
     aria-labelledby="visit-form-title"
     tabindex="-1"
-    use:focusTrap={{ onEscape: onClose }}
+    use:focusTrap={{ onEscape: requestClose }}
     on:submit|preventDefault={submit}
   >
     <div class="form-head">
@@ -196,7 +222,7 @@
         <p>{mode === 'edit' ? '编辑节点' : '新增节点'}</p>
         <h2 id="visit-form-title">{mode === 'edit' ? visit?.location.name : '旅行时空记录'}</h2>
       </div>
-      <button type="button" class="icon-button" aria-label="关闭" title="关闭" on:click={onClose}>
+      <button type="button" class="icon-button" aria-label="关闭" title="关闭" on:click={requestClose}>
         <X size={18} />
       </button>
     </div>

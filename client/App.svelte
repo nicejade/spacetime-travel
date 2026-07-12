@@ -21,7 +21,14 @@
   import TripPanel from './components/TripPanel.svelte';
   import ConfirmDialog from './components/ConfirmDialog.svelte';
   import VisitForm from './components/VisitForm.svelte';
-  import { createVisit, deleteVisit, fetchAtlas, fetchExportDocument, importAtlasDocument } from '$lib/api';
+  import {
+    createVisit,
+    deleteVisit,
+    fetchAtlas,
+    fetchExportDocument,
+    importAtlasDocument,
+    isAbortError
+  } from '$lib/api';
   import { confirm } from '$lib/confirm';
   import { downloadBlob } from '$lib/movie/engine';
   import { createMovieSession } from '$lib/movie/session';
@@ -50,6 +57,7 @@
   let backupBusy = false;
   let undoPayload: VisitPayload | null = null;
   let undoBusy = false;
+  let atlasController: AbortController | null = null;
 
   const UNDO_WINDOW_MS = 8000;
 
@@ -127,17 +135,26 @@
   $: canGeneratePoster = posterDisabledReason === '';
 
   async function loadAtlas() {
+    atlasController?.abort();
+    const controller = new AbortController();
+    atlasController = controller;
     loading = true;
     error = '';
 
     try {
-      atlas = await fetchAtlas();
+      const next = await fetchAtlas({ signal: controller.signal });
+      if (atlasController !== controller) return;
+      atlas = next;
       const newestVisit = [...atlas.visits].sort((a, b) => a.arrivedAt.localeCompare(b.arrivedAt)).at(-1);
       selectedVisitId = selectedVisitId ?? newestVisit?.id ?? null;
     } catch (fetchError) {
+      if (isAbortError(fetchError) || controller.signal.aborted) return;
       error = fetchError instanceof Error ? fetchError.message : '请求失败';
     } finally {
-      loading = false;
+      if (atlasController === controller) {
+        loading = false;
+        atlasController = null;
+      }
     }
   }
 

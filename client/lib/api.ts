@@ -4,6 +4,19 @@ const jsonHeaders = {
   'Content-Type': 'application/json'
 };
 
+export type FetchOptions = {
+  signal?: AbortSignal;
+};
+
+export function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name: unknown }).name === 'AbortError'
+  );
+}
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = (await response.json().catch(() => ({}))) as ApiErrorBody;
 
@@ -14,8 +27,8 @@ async function readJson<T>(response: Response): Promise<T> {
   return payload as T;
 }
 
-export async function fetchAtlas(): Promise<Atlas> {
-  return readJson<Atlas>(await fetch('/api/atlas'));
+export async function fetchAtlas(options?: FetchOptions): Promise<Atlas> {
+  return readJson<Atlas>(await fetch('/api/atlas', { signal: options?.signal }));
 }
 
 export interface ExportDocument {
@@ -46,22 +59,31 @@ export async function importAtlasDocument(document: unknown): Promise<ImportResu
   );
 }
 
-export async function createVisit(payload: VisitPayload): Promise<VisitMutationResult> {
+export async function createVisit(
+  payload: VisitPayload,
+  options?: FetchOptions
+): Promise<VisitMutationResult> {
   return readJson<VisitMutationResult>(
     await fetch('/api/visits', {
       method: 'POST',
       headers: jsonHeaders,
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: options?.signal
     })
   );
 }
 
-export async function updateVisit(id: number, payload: VisitPayload): Promise<VisitMutationResult> {
+export async function updateVisit(
+  id: number,
+  payload: VisitPayload,
+  options?: FetchOptions
+): Promise<VisitMutationResult> {
   return readJson<VisitMutationResult>(
     await fetch(`/api/visits/${id}`, {
       method: 'PUT',
       headers: jsonHeaders,
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: options?.signal
     })
   );
 }

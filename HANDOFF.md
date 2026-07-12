@@ -296,10 +296,13 @@
 
 ### P4-5 · API 客户端增强（按需）
 
-- **问题**：`client/lib/api.ts` 无 abort/retry；电影导出已有 AbortController，CRUD 没有。
-- **建议做法**：为 loadAtlas / 保存提供 AbortSignal；避免快速切换导致竞态。
-- **验收**：慢网下快速切换年份/关闭表单不出现错乱覆盖。
-- **依赖**：无。
+- **状态**：~~已完成（2026-07-12）~~
+- **实现**：
+  - `client/lib/api.ts`：`FetchOptions.signal` + `isAbortError`；`fetchAtlas` / `createVisit` / `updateVisit` 透传
+  - `App.loadAtlas`：新请求 abort 旧请求；仅当前 controller 写状态 / 清 loading
+  - `VisitForm`：保存 AbortController；关闭 / Esc / destroy 时 abort；静默忽略
+- **测试**：`client/lib/api.test.ts`
+- **未做**：retry；delete / import / export abort
 
 ### P4-6 · `TransportSelect` 弃用 API
 
@@ -369,6 +372,7 @@
 | pan/zoom + plotVisits 去重 | `panForZoomAt` / `clampContainedPan`；App→Canvas 传 plottedVisits |
 | 双击地图空白新建 | `pickLonLatAt`；预填坐标打开 VisitForm |
 | 选中态相邻路段 | `legHighlight`；选中高亮相邻 leg，弱化其余 |
+| API AbortSignal | `fetchAtlas`/保存可取消；loadAtlas 与 VisitForm 防竞态 |
 
 ---
 
@@ -397,7 +401,8 @@
 | 19 | ~~pan/zoom + plotVisits 去重~~ | ~~P4-3~~ |
 | 20 | ~~双击地图空白新建~~ | ~~P5-6~~ |
 | 21 | ~~选中态强化相邻路段~~ | ~~P5-9~~ |
-| 22 | 产品增强按需 | P5-* |
+| 22 | ~~API AbortSignal 竞态防护~~ | ~~P4-5~~ |
+| 23 | 产品增强按需 | P5-* |
 
 ---
 
@@ -433,6 +438,7 @@
   client/lib/map/panZoom.test.ts
   client/lib/map/pickLonLat.test.ts
   client/lib/map/legHighlight.test.ts
+  client/lib/api.test.ts
   client/lib/poster/preview.test.ts
   shared/years.test.ts
   ```
