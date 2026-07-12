@@ -322,7 +322,7 @@
 | P5-2 | 标签主题地图 | `tags` 逗号串 → `tags` + `visit_tags` 表；点击过滤高亮 | **必须 P0-1**；改 tags 模型 |
 | P5-3 | 时间轴真实比例 / 回忆胶卷 | 按时间比例刻度 + 窗口过滤 | 前端为主 |
 | P5-4 | 节点拖拽手动排序 | 若允许 `sequence` 偏离 `arrived_at` 需改 P0-4 决策；当前 sequence 仅为日期序缓存 | 与 P0-4 已记录决策绑定 |
-| P5-5 | 键盘快捷键 | `+`/`-`/`0`、空格、`N`、方向键切站 | 电影模式已用 Space/Esc，需统一 |
+| P5-5 | 键盘快捷键 | ~~已完成（2026-07-12）~~ `+/-/0` 缩放复位、`←/→` 切站、`N` 新建；电影 Space/Esc；输入/模态抑制 | `client/lib/shortcuts.ts` |
 | P5-6 | 双击地图空白新建 | ~~已完成（2026-07-11）~~ 双击空白预填 lat/lng/country 打开 VisitForm；电影模式忽略 | LocationPicker/投影已具备 |
 | P5-7 | 移动端 pinch zoom | 现有 `touch-action: none` 无 pinch | TravelCanvas |
 | P5-8 | 标签碰撞 / zoom 分级显隐 | 低倍率减文字重叠 | TravelCanvas |
@@ -373,6 +373,7 @@
 | 双击地图空白新建 | `pickLonLatAt`；预填坐标打开 VisitForm |
 | 选中态相邻路段 | `legHighlight`；选中高亮相邻 leg，弱化其余 |
 | API AbortSignal | `fetchAtlas`/保存可取消；loadAtlas 与 VisitForm 防竞态 |
+| 键盘快捷键 | `shortcuts.ts`；地图缩放/切站/新建；电影 Space/Esc |
 
 ---
 
@@ -402,7 +403,8 @@
 | 20 | ~~双击地图空白新建~~ | ~~P5-6~~ |
 | 21 | ~~选中态强化相邻路段~~ | ~~P5-9~~ |
 | 22 | ~~API AbortSignal 竞态防护~~ | ~~P4-5~~ |
-| 23 | 产品增强按需 | P5-* |
+| 23 | ~~键盘快捷键~~ | ~~P5-5~~ |
+| 24 | 产品增强按需 | P5-* |
 
 ---
 
@@ -439,6 +441,7 @@
   client/lib/map/pickLonLat.test.ts
   client/lib/map/legHighlight.test.ts
   client/lib/api.test.ts
+  client/lib/shortcuts.test.ts
   client/lib/poster/preview.test.ts
   shared/years.test.ts
   ```

@@ -29,16 +29,18 @@
     importAtlasDocument,
     isAbortError
   } from '$lib/api';
-  import { confirm } from '$lib/confirm';
+  import { confirm, confirmStore } from '$lib/confirm';
   import { downloadBlob } from '$lib/movie/engine';
   import { createMovieSession } from '$lib/movie/session';
   import { plotVisits } from '$lib/movie/plotVisits';
   import { createPosterPreview } from '$lib/poster/preview';
+  import { adjacentVisitId, isTypingTarget, resolveShortcut } from '$lib/shortcuts';
   import type { Atlas, AtlasStats, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
   import { visitToPayload } from '$lib/visitPayload';
   import { yearAfterSave } from '$lib/yearFilter';
   import { visitYear } from '$lib/years';
   import type { LonLatPick } from '$lib/map/pickLonLat';
+  import { get } from 'svelte/store';
 
   let atlas: Atlas | null = null;
   let loading = true;
@@ -58,6 +60,11 @@
   let undoPayload: VisitPayload | null = null;
   let undoBusy = false;
   let atlasController: AbortController | null = null;
+  let travelCanvas: {
+    zoomIn: () => void;
+    zoomOut: () => void;
+    resetView: () => void;
+  } | undefined;
 
   const UNDO_WINDOW_MS = 8000;
 
@@ -72,14 +79,54 @@
   onMount(() => {
     loadAtlas();
     const handleKeydown = (event: KeyboardEvent) => {
-      if (!$movie.active || $movie.exporting) return;
-      if (event.key === ' ' || event.code === 'Space') {
-        event.preventDefault();
-        movie.togglePause();
-      }
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        movie.stop();
+      const movieState = get(movie);
+      const action = resolveShortcut(event, {
+        movieActive: movieState.active,
+        movieExporting: movieState.exporting,
+        modalOpen: editorOpen || get(confirmStore).open || get(poster).open,
+        typing: isTypingTarget(event.target),
+        mapInteractive: activeView === 'map'
+      });
+      if (!action) return;
+
+      event.preventDefault();
+      switch (action.type) {
+        case 'movie-toggle-pause':
+          movie.togglePause();
+          break;
+        case 'movie-stop':
+          movie.stop();
+          break;
+        case 'zoom-in':
+          travelCanvas?.zoomIn();
+          break;
+        case 'zoom-out':
+          travelCanvas?.zoomOut();
+          break;
+        case 'zoom-reset':
+          travelCanvas?.resetView();
+          break;
+        case 'prev-visit': {
+          const nextId = adjacentVisitId(
+            visibleVisits.map((visit) => visit.id),
+            selectedVisitId,
+            -1
+          );
+          if (nextId != null) selectVisit(nextId);
+          break;
+        }
+        case 'next-visit': {
+          const nextId = adjacentVisitId(
+            visibleVisits.map((visit) => visit.id),
+            selectedVisitId,
+            1
+          );
+          if (nextId != null) selectVisit(nextId);
+          break;
+        }
+        case 'create-visit':
+          openCreate();
+          break;
       }
     };
 
@@ -331,6 +378,7 @@
 
 <main class="app-shell">
   <TravelCanvas
+    bind:this={travelCanvas}
     visits={visibleVisits}
     plottedVisits={plottedVisits}
     legs={visibleLegs}

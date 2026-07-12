@@ -115,6 +115,18 @@
     setControlStatus('View reset');
   }
 
+  export function zoomIn() {
+    zoomAt(1.16);
+  }
+
+  export function zoomOut() {
+    zoomAt(0.86);
+  }
+
+  export function resetView() {
+    fitWorld();
+  }
+
   function zoomAt(factor: number, clientX = viewportWidth / 2, clientY = viewportHeight / 2) {
     if (movieMode) return;
     const prevScale = scale;
@@ -398,7 +410,7 @@
         type="button"
         class="icon-button"
         aria-label="放大"
-        title="放大"
+        title="放大 (+)"
         on:click|stopPropagation={() => zoomAt(1.16)}
       >
         <ZoomIn size={18} />
@@ -407,7 +419,7 @@
         type="button"
         class="icon-button"
         aria-label="缩小"
-        title="缩小"
+        title="缩小 (-)"
         on:click|stopPropagation={() => zoomAt(0.86)}
       >
         <ZoomOut size={18} />
@@ -416,7 +428,7 @@
         type="button"
         class="icon-button"
         aria-label="重置视图"
-        title="重置"
+        title="重置 (0)"
         on:click|stopPropagation={fitWorld}
       >
         <RotateCcw size={18} />
@@ -435,7 +447,7 @@
         type="button"
         class="icon-button accent"
         aria-label="新增旅行节点"
-        title="新增"
+        title="新增 (N)"
         on:click|stopPropagation={handleCreate}
       >
         <Plus size={18} />
