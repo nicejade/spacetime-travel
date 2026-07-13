@@ -27,115 +27,135 @@
   export let onEdit: (visit: Visit) => void = () => {};
   export let onDelete: (visit: Visit) => void = () => {};
 
+  let lastVisitId: number | null = null;
+  let animateEnter = false;
+
   $: tags = splitTags(visit?.tags);
   $: countries = [...new Set(visits.map((item) => item.location.country))];
+  $: {
+    if (visit) {
+      animateEnter = lastVisitId != null && lastVisitId !== visit.id;
+      lastVisitId = visit.id;
+    } else {
+      animateEnter = false;
+      lastVisitId = null;
+    }
+  }
 </script>
 
 <aside class="detail-panel glass-panel" aria-label="旅行节点详情">
   {#if visit && year !== null}
-    <div class="panel-head" style={`--trip-color: ${yearColor}`}>
-      <span class="trip-chip">{year}</span>
-      <h2>{visit.location.name}</h2>
-      <p>{visit.location.country}</p>
-    </div>
-
-    <div class="quick-facts">
-      <div>
-        <CalendarDays size={16} />
-        <span>{formatDate(visit.arrivedAt)} - {formatDate(visit.departedAt)}</span>
-      </div>
-      <div>
-        <MapPin size={16} />
-        <span>从 {visit.origin.name} 出发</span>
-      </div>
-      <div>
-        <Plane size={16} />
-        <span>去程：{transportLabel(visit.outboundTransport)}</span>
-      </div>
-      {#if visit.returnsToOrigin}
-        <div>
-          <Plane size={16} />
-          <span>返程：{transportLabel(visit.returnTransport ?? visit.outboundTransport)}</span>
+    {#key visit.id}
+      <div
+        class="panel-body"
+        class:panel-body--enter={animateEnter}
+        style={`--trip-color: ${yearColor}`}
+      >
+        <div class="panel-head">
+          <span class="trip-chip">{year}</span>
+          <h2>{visit.location.name}</h2>
+          <p>{visit.location.country}</p>
         </div>
-      {:else}
-        <span class="one-way-badge">未返回起点</span>
-      {/if}
-      {#if visit.inboundTransport}
-        <div>
-          <Plane size={16} />
-          <span>站间：{transportLabel(visit.inboundTransport)}</span>
+
+        <div class="quick-facts">
+          <div>
+            <CalendarDays size={16} />
+            <span>{formatDate(visit.arrivedAt)} - {formatDate(visit.departedAt)}</span>
+          </div>
+          <div>
+            <MapPin size={16} />
+            <span>从 {visit.origin.name} 出发</span>
+          </div>
+          <div>
+            <Plane size={16} />
+            <span>去程：{transportLabel(visit.outboundTransport)}</span>
+          </div>
+          {#if visit.returnsToOrigin}
+            <div>
+              <Plane size={16} />
+              <span>返程：{transportLabel(visit.returnTransport ?? visit.outboundTransport)}</span>
+            </div>
+          {:else}
+            <span class="one-way-badge">未返回起点</span>
+          {/if}
+          {#if visit.inboundTransport}
+            <div>
+              <Plane size={16} />
+              <span>站间：{transportLabel(visit.inboundTransport)}</span>
+            </div>
+          {/if}
+          <div>
+            <Star size={16} />
+            <span>{ratingText(visit.rating)}</span>
+          </div>
+          <div>
+            <MapPin size={16} />
+            <span>{visit.location.lat.toFixed(2)}, {visit.location.lng.toFixed(2)}</span>
+          </div>
         </div>
-      {/if}
-      <div>
-        <Star size={16} />
-        <span>{ratingText(visit.rating)}</span>
-      </div>
-      <div>
-        <MapPin size={16} />
-        <span>{visit.location.lat.toFixed(2)}, {visit.location.lng.toFixed(2)}</span>
-      </div>
-    </div>
 
-    <section>
-      <h3><NotebookText size={16} />感受</h3>
-      <p>{visit.feeling || '未记录'}</p>
-    </section>
+        <section>
+          <h3><NotebookText size={16} />感受</h3>
+          <p>{visit.feeling || '未记录'}</p>
+        </section>
 
-    <section>
-      <h3><Utensils size={16} />饮食</h3>
-      <p>{visit.food || '未记录'}</p>
-    </section>
+        <section>
+          <h3><Utensils size={16} />饮食</h3>
+          <p>{visit.food || '未记录'}</p>
+        </section>
 
-    <section>
-      <h3><Tag size={16} />标签</h3>
-      {#if tags.length}
-        <div class="tag-list">
-          {#each tags as tag}
-            <span>{tag}</span>
-          {/each}
+        <section>
+          <h3><Tag size={16} />标签</h3>
+          {#if tags.length}
+            <div class="tag-list">
+              {#each tags as tag}
+                <span>{tag}</span>
+              {/each}
+            </div>
+          {:else}
+            <p>未记录</p>
+          {/if}
+        </section>
+
+        {#if visit.memory || visit.weather || visit.mood || visit.inboundNote}
+          <div class="memory-grid">
+            {#if visit.mood}
+              <div>
+                <small>心境</small>
+                <strong>{visit.mood}</strong>
+              </div>
+            {/if}
+            {#if visit.weather}
+              <div>
+                <small>天气</small>
+                <strong>{visit.weather}</strong>
+              </div>
+            {/if}
+            {#if visit.memory}
+              <div>
+                <small>片段</small>
+                <strong>{visit.memory}</strong>
+              </div>
+            {/if}
+            {#if visit.inboundNote}
+              <div>
+                <small>站间</small>
+                <strong>{visit.inboundNote}</strong>
+              </div>
+            {/if}
+          </div>
+        {/if}
+
+        <div class="panel-actions">
+          <button type="button" class="secondary-button" on:click={() => onEdit(visit)}>
+            <Pencil size={16} />编辑
+          </button>
+          <button type="button" class="danger-button" on:click={() => onDelete(visit)}>
+            <Trash2 size={16} />删除
+          </button>
         </div>
-      {:else}
-        <p>未记录</p>
-      {/if}
-    </section>
-
-    {#if visit.memory || visit.weather || visit.mood || visit.inboundNote}
-      <div class="memory-grid">
-        {#if visit.mood}
-          <div>
-            <small>心境</small>
-            <strong>{visit.mood}</strong>
-          </div>
-        {/if}
-        {#if visit.weather}
-          <div>
-            <small>天气</small>
-            <strong>{visit.weather}</strong>
-          </div>
-        {/if}
-        {#if visit.memory}
-          <div>
-            <small>片段</small>
-            <strong>{visit.memory}</strong>
-          </div>
-        {/if}
-        {#if visit.inboundNote}
-          <div>
-            <small>站间</small>
-            <strong>{visit.inboundNote}</strong>
-          </div>
-        {/if}
       </div>
-    {/if}
-
-    <div class="panel-actions">
-      <button type="button" class="secondary-button" on:click={() => onEdit(visit)}>
-        <Pencil size={16} />编辑
-      </button>
-      <button type="button" class="danger-button" on:click={() => onDelete(visit)}>
-        <Trash2 size={16} />删除
-      </button>
-    </div>
+    {/key}
   {:else}
     <div class="empty-panel">
       <span>{stats.visitCount ?? 0}</span>
@@ -161,6 +181,27 @@
     overflow: auto;
     border-radius: 8px;
     padding: 18px;
+  }
+
+  .panel-body--enter {
+    animation: panel-enter 220ms ease-out both;
+  }
+
+  @keyframes panel-enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel-body--enter {
+      animation: none;
+    }
   }
 
   .panel-head {

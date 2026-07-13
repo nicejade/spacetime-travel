@@ -327,7 +327,7 @@
 | P5-7 | 移动端 pinch zoom | 现有 `touch-action: none` 无 pinch | TravelCanvas |
 | P5-8 | 标签碰撞 / zoom 分级显隐 | 低倍率减文字重叠 | TravelCanvas |
 | P5-9 | 选中态强化相邻路段 | ~~已完成（2026-07-11）~~ 选中节点高亮相邻 leg、弱化其余；去程/回程随选中调透明度 | TravelCanvas |
-| P5-10 | 详情面板切换过渡 | 「飞到下一站」感 | TripPanel |
+| P5-10 | 详情面板切换过渡 | ~~已完成（2026-07-13）~~ visit→visit `{#key}` 淡入上移 ~220ms；empty 无动画；尊重 reduced-motion | TripPanel |
 | P5-11 | Stats 交通/里程深化 | 心情天气分布等 | 依赖 P0-3 |
 | P5-12 | Playwright 主链路 E2E | 创建→地图→编辑→删除 | 依赖 P1-3 |
 | P5-13 | CI：typecheck + test | ~~已完成（2026-07-11）~~ `.github/workflows/ci.yml`：push/PR → `pnpm typecheck` + `pnpm test` | 依赖 P1-3、P1-5 |
@@ -374,6 +374,7 @@
 | 选中态相邻路段 | `legHighlight`；选中高亮相邻 leg，弱化其余 |
 | API AbortSignal | `fetchAtlas`/保存可取消；loadAtlas 与 VisitForm 防竞态 |
 | 键盘快捷键 | `shortcuts.ts`；地图缩放/切站/新建；电影 Space/Esc |
+| 详情面板切换过渡 | TripPanel `{#key visit.id}` 淡入上移 |
 
 ---
 
@@ -404,7 +405,8 @@
 | 21 | ~~选中态强化相邻路段~~ | ~~P5-9~~ |
 | 22 | ~~API AbortSignal 竞态防护~~ | ~~P4-5~~ |
 | 23 | ~~键盘快捷键~~ | ~~P5-5~~ |
-| 24 | 产品增强按需 | P5-* |
+| 24 | ~~详情面板切换过渡~~ | ~~P5-10~~ |
+| 25 | 产品增强按需 | P5-* |
 
 ---
 
