@@ -35,6 +35,13 @@
   import { createMovieSession } from '$lib/movie/session';
   import { plotVisits } from '$lib/movie/plotVisits';
   import { createPosterPreview } from '$lib/poster/preview';
+  import {
+    mapPath,
+    navigate,
+    routeFromLocation,
+    statsPath,
+    type AppRoute
+  } from '$lib/router';
   import { adjacentVisitId, isTypingTarget, resolveShortcut } from '$lib/shortcuts';
   import type { Atlas, AtlasStats, Visit, VisitMutationResult, VisitPayload } from '$lib/types';
   import { visitToPayload } from '$lib/visitPayload';
@@ -54,8 +61,7 @@
   let editingVisit: Visit | null = null;
   let createPrefill: LonLatPick | null = null;
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
-  let activeView: 'map' | 'stats' = 'map';
-  let statsYear: number | 'all' = 'all';
+  let route: AppRoute = routeFromLocation();
   let importInput: HTMLInputElement | null = null;
   let backupBusy = false;
   let undoPayload: VisitPayload | null = null;
@@ -81,6 +87,9 @@
 
   onMount(() => {
     loadAtlas();
+    const syncRoute = () => {
+      route = routeFromLocation();
+    };
     const handleKeydown = (event: KeyboardEvent) => {
       if (toolsMenuOpen && event.key === 'Escape') {
         event.preventDefault();
@@ -94,7 +103,7 @@
         movieExporting: movieState.exporting,
         modalOpen: editorOpen || get(confirmStore).open || get(poster).open,
         typing: isTypingTarget(event.target),
-        mapInteractive: activeView === 'map'
+        mapInteractive: route.name === 'map'
       });
       if (!action) return;
 
@@ -146,10 +155,12 @@
       }
     };
 
+    window.addEventListener('popstate', syncRoute);
     window.addEventListener('keydown', handleKeydown);
     document.addEventListener('pointerdown', handlePointerDown);
     return () => {
       clearTimeout(noticeTimer);
+      window.removeEventListener('popstate', syncRoute);
       window.removeEventListener('keydown', handleKeydown);
       document.removeEventListener('pointerdown', handlePointerDown);
       movie.dispose();
@@ -198,6 +209,8 @@
     $poster.generating
   );
   $: canGeneratePoster = posterDisabledReason === '';
+  $: isStatsRoute = route.name === 'stats';
+  $: statsYear = route.name === 'stats' ? route.year : 'all';
 
   async function loadAtlas() {
     atlasController?.abort();
@@ -291,11 +304,15 @@
 
   function openStatsView() {
     if (loading) return;
-    activeView = 'stats';
+    navigate(statsPath());
   }
 
   function closeStatsView() {
-    activeView = 'map';
+    navigate(mapPath());
+  }
+
+  function setStatsYear(year: number | 'all') {
+    navigate(statsPath(year), { replace: true });
   }
 
   function toggleToolsMenu() {
@@ -408,6 +425,18 @@
 </script>
 
 <main class="app-shell">
+  {#if isStatsRoute}
+    <StatsView
+      visits={visits}
+      legs={legs}
+      years={years}
+      yearColors={yearColors}
+      statsYear={statsYear}
+      loading={loading}
+      onBack={closeStatsView}
+      onStatsYearChange={setStatsYear}
+    />
+  {:else}
   <TravelCanvas
     bind:this={travelCanvas}
     visits={visibleVisits}
@@ -451,22 +480,7 @@
     />
   {/if}
 
-  {#if activeView === 'stats'}
-    <StatsView
-      visits={visits}
-      legs={legs}
-      years={years}
-      yearColors={yearColors}
-      statsYear={statsYear}
-      loading={loading}
-      onBack={closeStatsView}
-      onStatsYearChange={(year) => {
-        statsYear = year;
-      }}
-    />
-  {/if}
-
-  {#if !$movie.active && activeView === 'map'}
+  {#if !$movie.active}
   <aside class="atlas-sidebar glass-panel" aria-label="旅行图谱">
     <div class="brand-row">
       <div class="brand-identity">
@@ -647,6 +661,7 @@
     error={$poster.error}
     onClose={poster.close}
   />
+  {/if}
 
   <ConfirmDialog />
 </main>
