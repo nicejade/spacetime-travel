@@ -1,0 +1,40 @@
+# Dependencies & package managers
+node_modules
+.pnpm-store
+
+# Git / IDE / local tooling
+.git
+.github
+.vscode
+.idea
+.superpowers
+.worktrees
+**/.DS_Store
+
+# Env & secrets (inject at runtime)
+.env
+.env.*
+!.env.example
+
+# Build output (rebuilt inside the image)
+dist
+server/public
+
+# Local SQLite runtime files (persist via Docker volume instead)
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+
+# Logs & caches
+*.log
+scripts/.cache
+
+# Tests & docs (not needed at runtime)
+**/*.test.ts
+docs
+HANDOFF.md
+AGENTS.md
+deploy2server.sh
+
+# Docker files themselves are not needed inside the build context payload,
+# but excluding Dockerfile can confuse some tooling — leave them in.

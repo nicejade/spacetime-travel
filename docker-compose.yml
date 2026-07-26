@@ -1,0 +1,50 @@
+# spacetime-travel — production-oriented Compose stack
+#
+# Quick start:
+#   docker compose up -d --build
+#   open http://localhost:5168
+#
+# SQLite lives in the named volume `spacetime-data` so restarts keep your atlas.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_VERSION: "22"
+    image: spacetime-travel:latest
+    container_name: spacetime-travel
+    restart: unless-stopped
+    # PID 1 / signal forwarding is handled by `tini` in the image ENTRYPOINT
+    ports:
+      - "${PORT:-5168}:5168"
+    environment:
+      NODE_ENV: production
+      PORT: "5168"
+      SPACETIME_DB_PATH: /app/data/spacetime-travel.sqlite
+    volumes:
+      # Persistent SQLite database (WAL files included under the same dir)
+      - spacetime-data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5168/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # Resource limits are optional; uncomment if you share the host with other stacks
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "1.0"
+    #       memory: 512M
+
+volumes:
+  spacetime-data:
+    name: spacetime-travel-data

@@ -70,6 +70,123 @@ http://localhost:5168
 
 The frontend uses Vite proxying so browser requests to `/api/*` are forwarded to the local API.
 
+## Docker
+
+Production deployment uses a multi-stage image: install deps (with a compiler for `better-sqlite3`), build the Vite frontend into `server/public/`, prune to production dependencies, then run the Fastify process as a non-root user. The same process serves `/api/*` and the static UI.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) Engine 24+ (BuildKit enabled)
+- [Docker Compose](https://docs.docker.com/compose/) v2 (`docker compose`)
+
+### Quick start
+
+```bash
+docker compose up -d --build
+```
+
+Open:
+
+```text
+http://localhost:5168
+```
+
+Health check:
+
+```bash
+curl -s http://localhost:5168/api/health
+# {"ok":true}
+```
+
+Stop:
+
+```bash
+docker compose down
+```
+
+Data is kept in the named volume `spacetime-travel-data`. To remove containers **and** wipe the database:
+
+```bash
+docker compose down -v
+```
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `5168` | Host port published by Compose (maps to container port `5168`). Also used as the process listen port inside the image. |
+| `SPACETIME_DB_PATH` | `/app/data/spacetime-travel.sqlite` | SQLite file path inside the container. |
+| `NODE_ENV` | `production` | Set by Compose / the image. |
+
+Optional host overrides: copy `.env.example` to `.env` (Compose loads it automatically).
+
+```bash
+cp .env.example .env
+# edit PORT=… if 5168 is already in use
+```
+
+### Image-only (no Compose)
+
+```bash
+docker build -t spacetime-travel:latest .
+docker run --rm -d \
+  --name spacetime-travel \
+  -p 5168:5168 \
+  -v spacetime-travel-data:/app/data \
+  -e SPACETIME_DB_PATH=/app/data/spacetime-travel.sqlite \
+  spacetime-travel:latest
+```
+
+### Persist data with a bind mount
+
+To use a host directory instead of a named volume (for example to back up or seed `data/`):
+
+```yaml
+# docker-compose.override.yml (local only; gitignored if you prefer)
+services:
+  app:
+    volumes:
+      - ./data:/app/data
+```
+
+The container runs as UID/GID `1000` (`node`). If the host `data/` directory is not writable, fix ownership once:
+
+```bash
+mkdir -p data
+sudo chown -R 1000:1000 data
+```
+
+### Seed / migrate an existing database
+
+Copy a local SQLite file into the volume, then start the stack:
+
+```bash
+docker compose up -d --build
+docker compose cp ./data/spacetime-travel.sqlite app:/app/data/spacetime-travel.sqlite
+docker compose restart app
+```
+
+On startup the app applies pending migrations (`PRAGMA user_version`) and seeds only when there are no visits.
+
+### Useful commands
+
+```bash
+# Follow logs
+docker compose logs -f app
+
+# Rebuild after code changes
+docker compose up -d --build
+
+# Shell into the running container
+docker compose exec app sh
+```
+
+### Notes
+
+- There is **no authentication**. Expose the port only on localhost or a trusted network (or put a reverse proxy / auth layer in front).
+- The image is not intended for multi-tenant production SaaS; it is a local-first atlas packaged for self-hosting.
+- `tsx` is a runtime dependency so the server TypeScript entrypoint can run without a separate compile step.
+
 ## Scripts
 
 ```bash
@@ -155,6 +272,10 @@ Rebuilds the client gazetteer data from GeoNames dumps.
 │   └── years.ts           # Year palette shared by API + UI
 ├── data/                  # Runtime SQLite database files
 ├── scripts/
+├── Dockerfile             # Multi-stage production image
+├── docker-compose.yml     # Compose stack + named SQLite volume
+├── .dockerignore
+├── .env.example
 ├── index.html
 ├── package.json
 └── vite.config.ts
@@ -236,6 +357,7 @@ Deletes a visit and rebuilds the global sequence / adjacent legs.
 ## Notes
 
 - Port `5167` is used for the Vite frontend to avoid common conflicts with other Vite apps on `5173`.
+- Production (including Docker) serves the built UI and API together on port `5168`.
 - Runtime database files and `server/public/` build output are ignored by Git.
 - The app is currently a local MVP and has no authentication or multi-user support.
 - The API listens on `0.0.0.0` with no auth — suitable for localhost or a trusted network only.
