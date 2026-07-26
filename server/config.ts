@@ -9,7 +9,8 @@ export const config = {
   /** Max JSON body size (export/import can be large). */
   bodyLimit: 5 * 1024 * 1024,
   publicPath: path.resolve(__dirname, 'public'),
-  defaultDbPath: path.join(path.resolve(__dirname, '..', 'data'), 'spacetime-travel.sqlite'),
+  /** Local default lives next to the server package; override with SPACETIME_DB_PATH in Docker/tests. */
+  defaultDbPath: path.join(__dirname, 'data', 'spacetime-travel.sqlite'),
   get dbPath() {
     return process.env.SPACETIME_DB_PATH?.trim() || this.defaultDbPath;
   }

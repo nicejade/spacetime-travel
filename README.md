@@ -139,21 +139,21 @@ docker run --rm -d \
 
 ### Persist data with a bind mount
 
-To use a host directory instead of a named volume (for example to back up or seed `data/`):
+To use a host directory instead of a named volume (for example to back up or seed `server/data/`):
 
 ```yaml
 # docker-compose.override.yml (local only; gitignored if you prefer)
 services:
   app:
     volumes:
-      - ./data:/app/data
+      - ./server/data:/app/data
 ```
 
-The container runs as UID/GID `1000` (`node`). If the host `data/` directory is not writable, fix ownership once:
+The container runs as UID/GID `1000` (`node`). If the host `server/data/` directory is not writable, fix ownership once:
 
 ```bash
-mkdir -p data
-sudo chown -R 1000:1000 data
+mkdir -p server/data
+sudo chown -R 1000:1000 server/data
 ```
 
 ### Seed / migrate an existing database
@@ -162,7 +162,7 @@ Copy a local SQLite file into the volume, then start the stack:
 
 ```bash
 docker compose up -d --build
-docker compose cp ./data/spacetime-travel.sqlite app:/app/data/spacetime-travel.sqlite
+docker compose cp ./server/data/spacetime-travel.sqlite app:/app/data/spacetime-travel.sqlite
 docker compose restart app
 ```
 
@@ -237,7 +237,7 @@ CI (GitHub Actions) runs `pnpm typecheck` and `pnpm test` on pushes to `main` / 
 pnpm smoke:visit-origin
 ```
 
-Runs the visit-origin smoke script against a temporary sqlite file (`SPACETIME_DB_PATH`); the default `data/spacetime-travel.sqlite` is left unchanged.
+Runs the visit-origin smoke script against a temporary sqlite file (`SPACETIME_DB_PATH`); the default `server/data/spacetime-travel.sqlite` is left unchanged.
 
 ```bash
 pnpm build:gazetteer
@@ -249,44 +249,40 @@ Rebuilds the client gazetteer data from GeoNames dumps.
 
 ```text
 .
-├── server/
-│   ├── index.ts           # Fastify API + production static server
-│   ├── db.ts              # SQLite queries, mutations, seed
-│   ├── migrations.ts      # Schema version + migrations
-│   ├── locations.ts       # Location reuse / orphan purge
-│   ├── rebuildLegs.ts     # Sequence + legs rebuild
-│   ├── visitRoutes.ts     # Read-time outbound/return routes
-│   ├── visitValidation.ts # Write payload validation
-│   └── public/            # Production build output (gitignored)
-├── client/
-│   ├── App.svelte         # Main shell and state orchestration
-│   ├── app.css            # Global visual system
-│   ├── components/        # Map, form, movie, stats, poster, dialogs
+├── client/                # Svelte UI (Vite)
+│   ├── App.svelte
+│   ├── components/
 │   └── lib/
-│       ├── api.ts
-│       ├── movie/         # Playback engine, path, camera, export
-│       ├── poster/        # Yearly poster SVG/PNG
-│       ├── stats/         # Stats computations
-│       └── gazetteer.ts   # Lazy place-name search
-├── shared/
-│   └── years.ts           # Year palette shared by API + UI
-├── data/                  # Runtime SQLite database files
-├── scripts/
-├── Dockerfile             # Multi-stage production image
-├── docker-compose.yml     # Compose stack + named SQLite volume
-├── .dockerignore
-├── .env.example
-├── index.html
+├── server/                # Fastify API + production static host
+│   ├── index.ts
+│   ├── config.ts          # port, publicPath, default DB path
+│   ├── db/                # connection + seed
+│   ├── data/              # Runtime SQLite (gitignored; .gitkeep only)
+│   ├── models/            # atlas, visit, location
+│   ├── services/
+│   ├── routes/
+│   └── public/            # Vite build output (gitignored)
+├── shared/                # Isomorphic pure logic used by API + UI
+│   └── years.ts           # Stable year → color palette
+├── scripts/               # Gazetteer build, smoke tests
+├── docs/                  # Design specs and plans
+├── Dockerfile
+├── docker-compose.yml
+├── index.html             # Vite HTML entry
 ├── package.json
 └── vite.config.ts
 ```
+
+**Why `shared/`?** The year palette must match between the atlas API (`yearColors`) and the client (filters, map nodes, posters). Keeping one pure module avoids drift; do not duplicate it under `client/` or `server/`.
+
+**Why `server/data/`?** SQLite is owned by the API process. Docker still mounts a volume at `/app/data` via `SPACETIME_DB_PATH` — container paths are independent of the local source layout.
 
 ## Data Model
 
 The SQLite database is created automatically at:
 
 ```text
-data/spacetime-travel.sqlite
+server/data/spacetime-travel.sqlite
 ```
 
 Core tables:
@@ -308,7 +304,7 @@ The database is seeded only when there are no visits.
 
 **Schema migrations** use SQLite `PRAGMA user_version` (`server/migrations.ts`). On startup the app bootstraps tables if needed, then applies any pending migrations in order. Existing visit data is preserved across additive upgrades (new indexes, columns via `ALTER TABLE`, backfills).
 
-Only delete `data/spacetime-travel.sqlite*` when a release notes a **non-migratable** breaking change, or when you intentionally want a clean reseed.
+Only delete `server/data/spacetime-travel.sqlite*` when a release notes a **non-migratable** breaking change, or when you intentionally want a clean reseed.
 
 ## API Overview
 

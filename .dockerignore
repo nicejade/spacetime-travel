@@ -21,9 +21,9 @@ dist
 server/public
 
 # Local SQLite runtime files (persist via Docker volume instead)
-data/*.sqlite
-data/*.sqlite-shm
-data/*.sqlite-wal
+server/data/*.sqlite
+server/data/*.sqlite-shm
+server/data/*.sqlite-wal
 
 # Logs & caches
 *.log

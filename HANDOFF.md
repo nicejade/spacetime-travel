@@ -49,7 +49,7 @@
 
 - `VisitForm` 的 `inbound_*` 仅在非首站显示
 - Smoke：`node --import tsx scripts/smoke-visit-origin.mjs` → `smoke ok`（临时库，见 P1-4）
-- **升级**：additive 变更由迁移自动应用；仅非可迁移破坏性变更才需删 `data/spacetime-travel.sqlite*`
+- **升级**：additive 变更由迁移自动应用；仅非可迁移破坏性变更才需删 `server/data/spacetime-travel.sqlite*`
 
 ---
 
@@ -415,7 +415,7 @@
 - 主画布：`client/components/TravelCanvas.svelte`
 - API / DB：`server/index.ts`（Fastify）、`server/db.ts`、`server/migrations.ts`、`server/visitRoutes.ts`
 - Schema 版本：`PRAGMA user_version`；新增迁移时 bump `SCHEMA_VERSION` 并在 `migrations` 字典注册
-- 运行时 DB：`data/spacetime-travel.sqlite`（gitignore）；可用 `SPACETIME_DB_PATH` 覆盖（测试 / smoke）
+- 运行时 DB：`server/data/spacetime-travel.sqlite`（gitignore）；可用 `SPACETIME_DB_PATH` 覆盖（测试 / smoke）
 - 构建输出：`server/public/`（已 gitignore）
 - 类型检查：`pnpm typecheck`
 - 测试：`pnpm test`；smoke：`pnpm smoke:visit-origin`（临时库，不写默认 DB）

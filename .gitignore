@@ -22,10 +22,10 @@ scripts/.cache/
 npm-debug.log*
 pnpm-debug.log*
 
-# Local database (runtime)
-data/*.sqlite
-data/*.sqlite-shm
-data/*.sqlite-wal
+# Local database (runtime; under server/)
+server/data/*.sqlite
+server/data/*.sqlite-shm
+server/data/*.sqlite-wal
 
 # OS
 .DS_Store

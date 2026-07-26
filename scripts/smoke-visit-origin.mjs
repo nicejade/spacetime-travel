@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const defaultDbPath = path.join(root, 'data', 'spacetime-travel.sqlite');
+const defaultDbPath = path.join(root, 'server', 'data', 'spacetime-travel.sqlite');
 
 function countVisits(dbFile) {
   if (!fs.existsSync(dbFile)) return 0;
