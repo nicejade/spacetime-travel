@@ -191,7 +191,7 @@
     z-index: 30;
     inset: 0;
     overflow: auto;
-    padding: 20px;
+    padding: 22px 24px;
     background:
       radial-gradient(circle at 18% 12%, rgba(226, 112, 91, 0.12), transparent 24rem),
       radial-gradient(circle at 82% 8%, rgba(65, 132, 145, 0.14), transparent 28rem),
@@ -203,28 +203,33 @@
     grid-template-columns: auto 1fr;
     align-items: center;
     gap: 12px 16px;
-    margin-bottom: 16px;
-    border-radius: 8px;
-    padding: 14px 16px;
+    margin-bottom: 18px;
+    border-radius: 12px;
+    padding: 14px 18px;
   }
 
   .back-button {
     display: inline-flex;
+    min-height: 40px;
     align-items: center;
     gap: 6px;
     border: 1px solid rgba(31, 54, 63, 0.12);
-    border-radius: 8px;
+    border-radius: 999px;
     background: rgba(255, 255, 255, 0.72);
     color: #243942;
-    padding: 8px 12px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
     transition:
       border-color 160ms ease,
-      background 160ms ease;
+      background 160ms ease,
+      transform 160ms ease;
   }
 
   .back-button:hover {
     border-color: rgba(35, 95, 115, 0.34);
     background: rgba(255, 255, 255, 0.96);
+    transform: translateY(-1px);
   }
 
   .title-block {
@@ -258,6 +263,7 @@
     background: rgba(255, 255, 255, 0.58);
     color: #263c45;
     padding: 0 12px;
+    font-size: 13px;
     transition:
       border-color 160ms ease,
       background 160ms ease;
@@ -284,8 +290,8 @@
   }
 
   .empty-panel {
-    border-radius: 8px;
-    padding: 24px;
+    border-radius: 12px;
+    padding: 28px 24px;
     text-align: center;
   }
 
@@ -304,45 +310,49 @@
 
   .kpi-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-    gap: 10px;
-    margin-bottom: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
   }
 
   .kpi-card {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    border-radius: 8px;
-    padding: 12px;
+    gap: 6px;
+    border-radius: 12px;
+    padding: 14px 14px 12px;
     color: #2d7c89;
   }
 
   .kpi-card span {
     color: #192d37;
-    font-size: 22px;
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
     font-weight: 800;
+    letter-spacing: -0.02em;
     line-height: 1.1;
   }
 
   .kpi-card small {
     color: #687b82;
     font-size: 12px;
+    font-weight: 600;
   }
 
   .module-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding-bottom: 24px;
+    gap: 14px;
+    align-items: start;
+    padding-bottom: 28px;
   }
 
   .section-label {
-    margin: 12px 0 8px;
-    color: #607880;
+    margin: 16px 0 10px;
+    color: #5a727a;
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
@@ -351,32 +361,48 @@
   }
 
   .country-table-wrap {
-    margin-top: 12px;
+    margin-top: 14px;
     overflow: auto;
+    border: 1px solid rgba(31, 54, 63, 0.08);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.42);
   }
 
   .country-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .country-table th,
   .country-table td {
-    border-bottom: 1px solid rgba(31, 54, 63, 0.08);
-    padding: 6px 4px;
+    border-bottom: 1px solid rgba(31, 54, 63, 0.07);
+    padding: 9px 12px;
     text-align: left;
+  }
+
+  .country-table tr:last-child td {
+    border-bottom: none;
   }
 
   .country-table th {
     color: #607880;
+    font-size: 11px;
     font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: rgba(31, 54, 63, 0.03);
+  }
+
+  .country-table td {
+    color: #243942;
+    font-variant-numeric: tabular-nums;
   }
 
   .rating-buckets {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -384,35 +410,55 @@
 
   .rating-buckets li {
     display: grid;
-    grid-template-columns: 42px 1fr auto;
+    grid-template-columns: 44px 1fr auto;
     align-items: center;
-    gap: 8px;
-    font-size: 12px;
+    gap: 10px 12px;
+    border-radius: 10px;
+    padding: 4px 6px 4px 4px;
+    color: #3d555e;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 160ms ease;
+  }
+
+  .rating-buckets li:hover {
+    background: rgba(45, 124, 137, 0.06);
   }
 
   .track {
-    height: 8px;
+    height: 16px;
     overflow: hidden;
+    border: 1px solid rgba(31, 54, 63, 0.06);
     border-radius: 999px;
-    background: rgba(31, 54, 63, 0.08);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.55), transparent),
+      rgba(31, 54, 63, 0.07);
+    box-shadow: inset 0 1px 2px rgba(25, 47, 65, 0.06);
   }
 
   .fill {
     height: 100%;
+    min-width: 4px;
     border-radius: inherit;
     background: linear-gradient(90deg, #2d7c89, #6d8f58);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      0 1px 3px rgba(45, 124, 137, 0.18);
+    transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .meta {
     color: #5f757d;
-    font-size: 11px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
     white-space: nowrap;
   }
 
   .top-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -422,20 +468,31 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
+    border-radius: 10px;
+    padding: 8px 10px;
     font-size: 13px;
+    font-weight: 600;
+    color: #243942;
+    background: rgba(255, 255, 255, 0.36);
+  }
+
+  .top-list .meta {
+    color: #2d7c89;
+    font-size: 13px;
+    font-weight: 700;
   }
 
   .empty-copy {
     margin: 0;
     color: #6a8088;
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 1.55;
   }
 
   @media (max-width: 980px) {
     .stats-view {
-      padding: 12px;
+      padding: 14px;
     }
 
     .kpi-row,

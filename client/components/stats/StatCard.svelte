@@ -20,9 +20,14 @@
     display: flex;
     min-height: 0;
     flex-direction: column;
-    gap: 14px;
-    border-radius: 8px;
-    padding: 16px;
+    gap: 16px;
+    border-radius: 12px;
+    padding: 18px 18px 16px;
+  }
+
+  header {
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(31, 54, 63, 0.08);
   }
 
   header h3 {
@@ -36,12 +41,14 @@
   header p {
     margin: 6px 0 0;
     color: #5f757d;
-    font-size: 12px;
-    line-height: 1.45;
+    font-size: 12.5px;
+    line-height: 1.5;
   }
 
   .body {
+    display: flex;
     min-height: 0;
     flex: 1;
+    flex-direction: column;
   }
 </style>
