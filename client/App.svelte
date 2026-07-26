@@ -7,6 +7,7 @@
     Globe,
     Image,
     MapPinned,
+    MoreHorizontal,
     Plus,
     RefreshCw,
     Route,
@@ -60,6 +61,8 @@
   let undoPayload: VisitPayload | null = null;
   let undoBusy = false;
   let atlasController: AbortController | null = null;
+  let toolsMenuOpen = false;
+  let toolsMenuRoot: HTMLElement | null = null;
   let travelCanvas: {
     zoomIn: () => void;
     zoomOut: () => void;
@@ -79,6 +82,12 @@
   onMount(() => {
     loadAtlas();
     const handleKeydown = (event: KeyboardEvent) => {
+      if (toolsMenuOpen && event.key === 'Escape') {
+        event.preventDefault();
+        closeToolsMenu();
+        return;
+      }
+
       const movieState = get(movie);
       const action = resolveShortcut(event, {
         movieActive: movieState.active,
@@ -130,10 +139,19 @@
       }
     };
 
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!toolsMenuOpen || !toolsMenuRoot) return;
+      if (!toolsMenuRoot.contains(event.target as Node)) {
+        closeToolsMenu();
+      }
+    };
+
     window.addEventListener('keydown', handleKeydown);
+    document.addEventListener('pointerdown', handlePointerDown);
     return () => {
       clearTimeout(noticeTimer);
       window.removeEventListener('keydown', handleKeydown);
+      document.removeEventListener('pointerdown', handlePointerDown);
       movie.dispose();
     };
   });
@@ -278,6 +296,19 @@
 
   function closeStatsView() {
     activeView = 'map';
+  }
+
+  function toggleToolsMenu() {
+    toolsMenuOpen = !toolsMenuOpen;
+  }
+
+  function closeToolsMenu() {
+    toolsMenuOpen = false;
+  }
+
+  function runToolsAction(action: () => void | Promise<void>) {
+    closeToolsMenu();
+    void action();
   }
 
   async function handleDelete(visit: Visit) {
@@ -438,14 +469,79 @@
   {#if !$movie.active && activeView === 'map'}
   <aside class="atlas-sidebar glass-panel" aria-label="旅行图谱">
     <div class="brand-row">
-      <div class="brand-mark">
-        <Globe size={22} strokeWidth={1.8} />
+      <div class="brand-identity">
+        <div class="brand-mark">
+          <Globe size={22} strokeWidth={1.8} />
+        </div>
+        <div>
+          <p class="eyebrow">spacetime</p>
+          <h1>TRAVEL</h1>
+        </div>
       </div>
-      <div>
-        <p class="eyebrow">spacetime</p>
-        <h1>TRAVEL</h1>
+
+      <div class="tools-menu" bind:this={toolsMenuRoot}>
+        <button
+          type="button"
+          class="icon-button tools-menu-trigger"
+          aria-label="更多操作"
+          title="更多操作"
+          aria-haspopup="menu"
+          aria-expanded={toolsMenuOpen}
+          on:click={toggleToolsMenu}
+        >
+          <MoreHorizontal size={18} />
+        </button>
+
+        {#if toolsMenuOpen}
+          <div class="tools-menu-panel glass-panel" role="menu" aria-label="更多操作">
+            <button
+              type="button"
+              role="menuitem"
+              disabled={loading}
+              title="查看旅行统计"
+              on:click={() => runToolsAction(openStatsView)}
+            >
+              <BarChart3 size={17} />旅行统计
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!canGeneratePoster}
+              title={posterDisabledReason || '生成该年旅行海报'}
+              on:click={() => runToolsAction(openPosterPreview)}
+            >
+              <Image size={17} />生成海报
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={loading || backupBusy}
+              title="导出全部旅行数据为 JSON"
+              on:click={() => runToolsAction(handleExportData)}
+            >
+              <Download size={17} />导出数据
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={loading || backupBusy}
+              title="从 JSON 备份替换导入"
+              on:click={() => runToolsAction(openImportPicker)}
+            >
+              <Upload size={17} />导入数据
+            </button>
+          </div>
+        {/if}
       </div>
     </div>
+
+    <input
+      bind:this={importInput}
+      type="file"
+      accept="application/json,.json"
+      hidden
+      on:change={handleImportFile}
+    />
 
     <div class="stats-grid" aria-label="旅行统计">
       <div>
@@ -469,53 +565,6 @@
         <small>时间</small>
       </div>
     </div>
-
-    <button
-      type="button"
-      class="secondary-button poster-button"
-      disabled={loading}
-      title="查看旅行统计"
-      on:click={openStatsView}
-    >
-      <BarChart3 size={17} />旅行统计
-    </button>
-
-    <button
-      type="button"
-      class="secondary-button poster-button"
-      disabled={!canGeneratePoster}
-      title={posterDisabledReason || '生成该年旅行海报'}
-      on:click={openPosterPreview}
-    >
-      <Image size={17} />生成海报
-    </button>
-
-    <button
-      type="button"
-      class="secondary-button poster-button"
-      disabled={loading || backupBusy}
-      title="导出全部旅行数据为 JSON"
-      on:click={handleExportData}
-    >
-      <Download size={17} />导出数据
-    </button>
-
-    <button
-      type="button"
-      class="secondary-button poster-button"
-      disabled={loading || backupBusy}
-      title="从 JSON 备份替换导入"
-      on:click={openImportPicker}
-    >
-      <Upload size={17} />导入数据
-    </button>
-    <input
-      bind:this={importInput}
-      type="file"
-      accept="application/json,.json"
-      hidden
-      on:change={handleImportFile}
-    />
 
     <div class="trip-filter" aria-label="年份筛选">
       <button type="button" class:active={selectedYear === 'all'} on:click={() => selectYear('all')}>
@@ -648,6 +697,14 @@
   .brand-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .brand-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
     gap: 12px;
   }
 
@@ -655,6 +712,7 @@
     display: grid;
     width: 46px;
     height: 46px;
+    flex: 0 0 auto;
     place-items: center;
     border: 1px solid rgba(35, 95, 115, 0.16);
     border-radius: 8px;
@@ -679,6 +737,67 @@
     font-weight: 800;
     letter-spacing: 0.02em;
     line-height: 1.15;
+  }
+
+  .tools-menu {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .tools-menu-trigger {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .tools-menu-panel {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 8px);
+    right: 0;
+    display: flex;
+    min-width: 168px;
+    flex-direction: column;
+    gap: 2px;
+    border-radius: 12px;
+    padding: 6px;
+  }
+
+  .tools-menu-panel button {
+    display: flex;
+    width: 100%;
+    min-height: 40px;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #1f3640;
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 12px;
+    text-align: left;
+    transition: background 140ms ease;
+  }
+
+  .tools-menu-panel button:hover:not(:disabled) {
+    background: rgba(35, 95, 115, 0.1);
+  }
+
+  .tools-menu-panel button:focus-visible {
+    outline: 3px solid rgba(58, 132, 145, 0.28);
+    outline-offset: 1px;
+  }
+
+  .tools-menu-panel button:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .tools-menu-panel :global(svg) {
+    flex: 0 0 auto;
+    color: #2d7c89;
   }
 
   .stats-grid {
@@ -713,11 +832,6 @@
     margin-top: 5px;
     color: #687b82;
     font-size: 12px;
-  }
-
-  .poster-button {
-    width: 100%;
-    justify-content: center;
   }
 
   .trip-filter {
@@ -826,7 +940,7 @@
     }
 
     .brand-row {
-      align-items: flex-start;
+      align-items: center;
     }
 
     h1 {
