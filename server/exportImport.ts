@@ -1,5 +1,6 @@
+import { httpError } from './lib/httpError.js';
 import { SCHEMA_VERSION } from './migrations.js';
-import type { HttpError, VisitPayloadInput } from './types.js';
+import type { VisitPayloadInput } from './types.js';
 
 export const EXPORT_FORMAT = 'spacetime-travel';
 
@@ -20,13 +21,6 @@ export interface ExportDocument {
   schemaVersion: number;
   exportedAt: string;
   visits: ExportVisit[];
-}
-
-function httpError(status: number, message: string): HttpError {
-  const error = new Error(message) as HttpError;
-  error.status = status;
-  error.statusCode = status;
-  return error;
 }
 
 export function buildExportDocument(

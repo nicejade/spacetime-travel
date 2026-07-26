@@ -1,14 +1,7 @@
-import type { HttpError } from './types.js';
+import { httpError } from './lib/httpError.js';
 
 export const TRANSPORTS = ['flight', 'train', 'ferry', 'drive', 'bus', 'walk'] as const;
 export type Transport = (typeof TRANSPORTS)[number];
-
-function httpError(status: number, message: string): HttpError {
-  const error = new Error(message) as HttpError;
-  error.status = status;
-  error.statusCode = status;
-  return error;
-}
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
