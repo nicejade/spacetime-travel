@@ -2,10 +2,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-/** `server/` under tsx, or `dist/server/` under node — both map to repo root. */
+/** `server/` under tsx, or `server/dist/server/` under node — both map to repo root. */
 const repoRoot =
   path.basename(path.dirname(here)) === 'dist'
-    ? path.resolve(here, '../..')
+    ? path.resolve(here, '../../..')
     : path.resolve(here, '..');
 
 export const config = {

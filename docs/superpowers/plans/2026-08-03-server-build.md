@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Compile `server/` + `shared/` to `dist/` via `pnpm build:server`, and run production via `node dist/server/index.js`.
+**Goal:** Compile `server/` + `shared/` to `server/dist/` via `pnpm build:server`, and run production via `node server/dist/server/index.js`.
 
-**Architecture:** Dedicated emit `tsconfig.server.json` (`NodeNext`); root `tsconfig` stays `noEmit`. Fix `config.ts` repo-root path resolution so `server/public` and `server/data` work from both `server/` (tsx) and `dist/server/` (node). Point `start`, PM2, and Docker at the compiled entry.
+**Architecture:** Dedicated emit `tsconfig.server.json` (`NodeNext`, `outDir: ./server/dist`); root `tsconfig` stays `noEmit`. Fix `config.ts` repo-root path resolution so `server/public` and `server/data` work from both `server/` (tsx) and `server/dist/server/` (node). Point `start`, PM2, and Docker at the compiled entry.
 
 **Tech Stack:** TypeScript `tsc`, Node ESM, Fastify, PM2, Docker multi-stage
 
@@ -12,6 +12,7 @@
 
 - Dev path stays `tsx` (`pnpm api` / `pnpm dev`)
 - `pnpm build` remains Vite → `server/public/` only
+- Compile output lives under `server/dist/` (not repo-root `dist/`)
 - Do not add `pm2` as a dependency
 - Do not add `build:all` in this plan
 - Commit messages: English + gitmoji per `AGENTS.md`
@@ -27,9 +28,9 @@
 - Modify: `README.md` (scripts / start / PM2 notes)
 
 **Interfaces:**
-- Produces: `pnpm build:server` → `dist/server/index.js`, `dist/shared/**`
+- Produces: `pnpm build:server` → `server/dist/server/index.js`, `server/dist/shared/**`
 - Produces: `config.publicPath` / `config.defaultDbPath` resolve to repo `server/public` and `server/data` from either run mode
-- Produces: `pnpm start` → `node dist/server/index.js`
+- Produces: `pnpm start` → `node server/dist/server/index.js`
 
 - [ ] **Step 1: Add `tsconfig.server.json`**
 
@@ -38,7 +39,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "outDir": "dist",
+    "outDir": "./server/dist",
     "rootDir": ".",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -58,7 +59,7 @@ Set:
 
 ```json
 "build:server": "tsc -p tsconfig.server.json",
-"start": "node dist/server/index.js"
+"start": "node server/dist/server/index.js"
 ```
 
 Leave `build`, `api`, `dev`, `typecheck` unchanged.
@@ -72,10 +73,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-/** `server/` under tsx, or `dist/server/` under node — both map to repo root. */
+/** `server/` under tsx, or `server/dist/server/` under node — both map to repo root. */
 const repoRoot =
   path.basename(path.dirname(here)) === 'dist'
-    ? path.resolve(here, '../..')
+    ? path.resolve(here, '../../..')
     : path.resolve(here, '..');
 
 export const config = {
@@ -94,8 +95,8 @@ export const config = {
 
 Under Scripts:
 
-- Add `pnpm build:server` — compiles API to `dist/`
-- Update `pnpm start` — requires prior `build:server`; runs `node dist/server/index.js`
+- Add `pnpm build:server` — compiles API to `server/dist/`
+- Update `pnpm start` — requires prior `build:server`; runs `node server/dist/server/index.js`
 - PM2 section: note `pnpm build` + `pnpm build:server` before `pnpm deploy` when code changed
 
 - [ ] **Step 5: Verify compile + health**
@@ -104,9 +105,9 @@ Run:
 
 ```bash
 pnpm build:server
-test -f dist/server/index.js
+test -f server/dist/server/index.js
 pnpm build
-node dist/server/index.js &
+node server/dist/server/index.js &
 sleep 1
 curl -s http://127.0.0.1:5168/api/health
 kill %1
@@ -135,7 +136,7 @@ EOF
 - Modify: `docs/superpowers/specs/2026-08-03-pm2-deploy-design.md` (script/entry lines only, keep deploy=reload)
 
 **Interfaces:**
-- Consumes: `dist/server/index.js` from Task 1
+- Consumes: `server/dist/server/index.js` from Task 1
 - Produces: PM2 and Docker start compiled Node entry
 
 - [ ] **Step 1: Update `ecosystem.config.cjs`**
@@ -145,7 +146,7 @@ module.exports = {
   apps: [
     {
       name: 'spacetime-travel',
-      script: 'dist/server/index.js',
+      script: 'server/dist/server/index.js',
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,
@@ -161,7 +162,7 @@ module.exports = {
 };
 ```
 
-Update header comment: production needs `pnpm build:server` (and `pnpm build` for UI).
+Update header comment: production needs `pnpm build:server` (and `pnpm build` for UI); output under `server/dist/`.
 
 - [ ] **Step 2: Update `Dockerfile`**
 
@@ -179,7 +180,7 @@ Production copies — replace TS-only copy with:
 COPY --from=build --chown=node:node /app/package.json ./
 COPY --from=build --chown=node:node /app/pnpm-workspace.yaml ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
-COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/server/dist ./server/dist
 COPY --from=build --chown=node:node /app/server/public ./server/public
 COPY --from=build --chown=node:node /app/server/data ./server/data
 ```
@@ -187,7 +188,7 @@ COPY --from=build --chown=node:node /app/server/data ./server/data
 Remove PATH comment about `tsx` if obsolete. Set:
 
 ```dockerfile
-CMD ["node", "dist/server/index.js"]
+CMD ["node", "server/dist/server/index.js"]
 ```
 
 Do not copy full `server/` TS sources or `shared/` sources into the production image (compiled output + static assets + data dir are enough).
@@ -196,7 +197,7 @@ Do not copy full `server/` TS sources or `shared/` sources into the production i
 
 In `docs/superpowers/specs/2026-08-03-pm2-deploy-design.md`, change ecosystem table:
 
-- `script` → `dist/server/index.js`
+- `script` → `server/dist/server/index.js`
 - Remove `args` / `tsx` rows
 
 Operator flow: mention `pnpm build:server` alongside `pnpm build` when code changed.
@@ -205,9 +206,9 @@ Operator flow: mention `pnpm build:server` alongside `pnpm build` when code chan
 
 ```bash
 pnpm build:server
-node -e "const c=require('./ecosystem.config.cjs'); if(c.apps[0].script!=='dist/server/index.js') process.exit(1)"
+node -e "const c=require('./ecosystem.config.cjs'); if(c.apps[0].script!=='server/dist/server/index.js') process.exit(1)"
 grep -q 'build:server' Dockerfile
-grep -q 'dist/server/index.js' Dockerfile
+grep -q 'server/dist/server/index.js' Dockerfile
 pnpm typecheck
 pnpm test
 ```
@@ -231,7 +232,7 @@ EOF
 
 | Spec item | Task |
 |-----------|------|
-| `tsconfig.server.json` | 1 |
+| `tsconfig.server.json` (`outDir: ./server/dist`) | 1 |
 | `build:server` / `start` scripts | 1 |
 | `config.ts` path fix | 1 |
 | README | 1 |

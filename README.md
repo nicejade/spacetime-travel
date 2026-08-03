@@ -78,7 +78,7 @@ For a host with Node, pnpm, and a global [PM2](https://pm2.keymetrics.io/) insta
 npm i -g pm2   # once
 pnpm install
 pnpm build          # UI → server/public/
-pnpm build:server   # API → dist/
+pnpm build:server   # API → server/dist/
 pnpm deploy         # pm2 startOrReload
 ```
 
@@ -242,13 +242,13 @@ Builds the production frontend into `server/public/` (gitignored).
 pnpm build:server
 ```
 
-Compiles the Fastify API and shared modules to `dist/`.
+Compiles the Fastify API and shared modules to `server/dist/`.
 
 ```bash
 pnpm start
 ```
 
-Runs `node dist/server/index.js` (requires a prior `pnpm build:server`). If `server/public/` exists, the same process also serves the production frontend.
+Runs `node server/dist/server/index.js` (requires a prior `pnpm build:server`). If `server/public/` exists, the same process also serves the production frontend.
 
 ```bash
 pnpm deploy

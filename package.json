@@ -11,7 +11,7 @@
     "build": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "preview": "vite preview --host 0.0.0.0",
-    "start": "node dist/server/index.js",
+    "start": "node server/dist/server/index.js",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test \"server/**/*.test.ts\" \"client/**/*.test.ts\" \"shared/**/*.test.ts\"",
     "smoke:visit-origin": "node --import tsx scripts/smoke-visit-origin.mjs",

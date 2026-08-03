@@ -3,7 +3,7 @@
  *
  * Usage:
  *   pnpm build              # UI → server/public (when UI changed)
- *   pnpm build:server       # server → dist/server (when server changed)
+ *   pnpm build:server       # server → server/dist (when server changed)
  *   pnpm deploy             # pm2 startOrReload
  *   pnpm pm2:logs
  *   pnpm pm2:stop
@@ -14,7 +14,7 @@ module.exports = {
   apps: [
     {
       name: 'spacetime-travel',
-      script: 'dist/server/index.js',
+      script: 'server/dist/server/index.js',
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,

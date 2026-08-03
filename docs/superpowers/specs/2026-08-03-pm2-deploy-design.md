@@ -28,7 +28,7 @@ CommonJS (repo has `"type": "module"`).
 | Field | Value | Why |
 |-------|--------|-----|
 | `name` | `spacetime-travel` | Stable PM2 app id for scripts |
-| `script` | `dist/server/index.js` | Compiled server entry (same as Docker `CMD`) |
+| `script` | `server/dist/server/index.js` | Compiled server entry (same as Docker `CMD`) |
 | `instances` | `1` | SQLite-safe |
 | `exec_mode` | `fork` | Default for single process |
 | `env.NODE_ENV` | `production` | Match Docker |
