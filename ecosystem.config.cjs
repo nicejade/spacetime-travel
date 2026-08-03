@@ -23,7 +23,7 @@ module.exports = {
       error_file: 'logs/pm2-error.log',
       env: {
         NODE_ENV: 'production',
-        PORT: '5168',
+        PORT: 5168,
       },
     },
   ],
