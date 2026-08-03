@@ -77,8 +77,12 @@ For a host with Node, pnpm, and a global [PM2](https://pm2.keymetrics.io/) insta
 ```bash
 npm i -g pm2   # once
 pnpm install
-pnpm deploy    # vite build → pm2 startOrReload
+pnpm build          # UI → server/public/
+pnpm build:server   # API → dist/
+pnpm deploy         # pm2 startOrReload
 ```
+
+When code changed, run `pnpm build` and `pnpm build:server` before `pnpm deploy`.
 
 Open `http://localhost:5168`. Useful commands:
 
@@ -235,16 +239,22 @@ pnpm build
 Builds the production frontend into `server/public/` (gitignored).
 
 ```bash
+pnpm build:server
+```
+
+Compiles the Fastify API and shared modules to `dist/`.
+
+```bash
 pnpm start
 ```
 
-Starts the Fastify API. If `server/public/` exists, the same process also serves the production frontend.
+Runs `node dist/server/index.js` (requires a prior `pnpm build:server`). If `server/public/` exists, the same process also serves the production frontend.
 
 ```bash
 pnpm deploy
 ```
 
-Builds the production frontend, then `pm2 startOrReload` via `ecosystem.config.cjs` (requires global `pm2`).
+Runs `pm2 startOrReload` via `ecosystem.config.cjs` (requires global `pm2`). Build the UI separately with `pnpm build` when needed.
 
 ```bash
 pnpm pm2:start
