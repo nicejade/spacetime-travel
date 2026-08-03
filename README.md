@@ -70,6 +70,27 @@ http://localhost:5168
 
 The frontend uses Vite proxying so browser requests to `/api/*` are forwarded to the local API.
 
+## PM2
+
+For a host with Node, pnpm, and a global [PM2](https://pm2.keymetrics.io/) install (no Docker):
+
+```bash
+npm i -g pm2   # once
+pnpm install
+pnpm deploy    # vite build → pm2 startOrReload
+```
+
+Open `http://localhost:5168`. Useful commands:
+
+```bash
+pnpm pm2:status
+pnpm pm2:logs
+pnpm pm2:stop
+pnpm pm2:restart
+```
+
+Config lives in `ecosystem.config.cjs` (single fork process; SQLite is not multi-writer safe). Logs go to `logs/` (gitignored). Override `PORT` or `SPACETIME_DB_PATH` in the shell before `pnpm deploy` / `pnpm pm2:reload` if needed.
+
 ## Docker
 
 Production deployment uses a multi-stage image: install deps (with a compiler for `better-sqlite3`), build the Vite frontend into `server/public/`, prune to production dependencies, then run the Fastify process as a non-root user. The same process serves `/api/*` and the static UI.
@@ -220,6 +241,23 @@ pnpm start
 Starts the Fastify API. If `server/public/` exists, the same process also serves the production frontend.
 
 ```bash
+pnpm deploy
+```
+
+Builds the production frontend, then `pm2 startOrReload` via `ecosystem.config.cjs` (requires global `pm2`).
+
+```bash
+pnpm pm2:start
+pnpm pm2:stop
+pnpm pm2:restart
+pnpm pm2:reload
+pnpm pm2:logs
+pnpm pm2:status
+```
+
+PM2 process helpers for the `spacetime-travel` app.
+
+```bash
 pnpm typecheck
 ```
 
@@ -268,6 +306,7 @@ Rebuilds the client gazetteer data from GeoNames dumps.
 ├── docs/                  # Design specs and plans
 ├── Dockerfile
 ├── docker-compose.yml
+├── ecosystem.config.cjs   # PM2 production process
 ├── index.html             # Vite HTML entry
 ├── package.json
 └── vite.config.ts

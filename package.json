@@ -14,7 +14,14 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test \"server/**/*.test.ts\" \"client/**/*.test.ts\" \"shared/**/*.test.ts\"",
     "smoke:visit-origin": "node --import tsx scripts/smoke-visit-origin.mjs",
-    "build:gazetteer": "node scripts/build-gazetteer.mjs"
+    "build:gazetteer": "node scripts/build-gazetteer.mjs",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop spacetime-travel",
+    "pm2:restart": "pm2 restart spacetime-travel",
+    "pm2:reload": "pm2 startOrReload ecosystem.config.cjs --update-env",
+    "pm2:logs": "pm2 logs spacetime-travel",
+    "pm2:status": "pm2 status spacetime-travel",
+    "deploy": "pnpm build && pnpm pm2:reload"
   },
   "dependencies": {
     "@fastify/static": "^8.2.0",
