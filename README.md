@@ -210,7 +210,7 @@ docker compose exec app sh
 
 - There is **no authentication**. Expose the port only on localhost or a trusted network (or put a reverse proxy / auth layer in front).
 - The image is not intended for multi-tenant production SaaS; it is a local-first atlas packaged for self-hosting.
-- `tsx` is a runtime dependency so the server TypeScript entrypoint can run without a separate compile step.
+- Production runs the compiled entry (`node server/dist/server/index.js` after `pnpm build:server`). Dev still uses `tsx` via `pnpm api` / `pnpm dev`.
 
 ## Scripts
 
