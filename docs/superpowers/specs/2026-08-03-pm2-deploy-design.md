@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-03  
 **Status:** Approved  
-**Scope:** Option B — local process management + one-command build-and-reload
+**Scope:** Option B — local process management + one-command PM2 reload (`deploy`)
 
 ## Goal
 
@@ -17,7 +17,7 @@ Add a PM2-based production run path alongside the existing Docker stack, so a ho
 
 ## Approach
 
-Root `ecosystem.config.cjs` plus `package.json` scripts. Deploy = `pnpm build` then `pm2 startOrReload`.
+Root `ecosystem.config.cjs` plus `package.json` scripts. Deploy = `pm2 startOrReload` (build is separate: `pnpm build` for UI, `pnpm build:server` for server).
 
 ## Files
 
@@ -28,8 +28,7 @@ CommonJS (repo has `"type": "module"`).
 | Field | Value | Why |
 |-------|--------|-----|
 | `name` | `spacetime-travel` | Stable PM2 app id for scripts |
-| `script` | `tsx` | Same runtime as Docker `CMD` |
-| `args` | `server/index.ts` | Existing production entry |
+| `script` | `dist/server/index.js` | Compiled server entry (same as Docker `CMD`) |
 | `instances` | `1` | SQLite-safe |
 | `exec_mode` | `fork` | Default for single process |
 | `env.NODE_ENV` | `production` | Match Docker |
@@ -50,7 +49,7 @@ CommonJS (repo has `"type": "module"`).
 | `pm2:reload` | `pm2 startOrReload ecosystem.config.cjs --update-env` |
 | `pm2:logs` | `pm2 logs spacetime-travel` |
 | `pm2:status` | `pm2 status spacetime-travel` |
-| `deploy` | `pnpm build && pnpm pm2:reload` |
+| `deploy` | `pnpm pm2:reload` |
 
 Prerequisite: `pm2` installed globally on the host (`npm i -g pm2` or equivalent).
 
@@ -66,19 +65,18 @@ Short “PM2” section next to Docker: prerequisite, `pnpm deploy`, and common 
 
 1. `pnpm install` (and approve native builds if needed)
 2. Ensure `pm2` is on `PATH`
-3. First deploy or update: `pnpm deploy`
+3. First deploy or update: `pnpm build` (if UI changed), `pnpm build:server` (if server changed), then `pnpm deploy`
 4. App listens on `http://localhost:5168` (or `PORT`)
 5. Optional: `pnpm pm2:logs` / `pnpm pm2:stop`
 
 ## Error handling
 
 - If `pm2` is missing, scripts fail with the shell’s “command not found”
-- If `build` fails, `deploy` does not call reload (`&&`)
 - SQLite path and migrations behave as today on process start
 
 ## Testing
 
-- Manual: `pnpm build` then `pnpm pm2:reload`; `GET /api/health` returns `{"ok":true}`
+- Manual: `pnpm build`, `pnpm build:server`, then `pnpm deploy`; `GET /api/health` returns `{"ok":true}`
 - `pnpm pm2:status` shows `spacetime-travel` online
 - No automated CI for PM2 (host-dependent)
 

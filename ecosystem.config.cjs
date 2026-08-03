@@ -2,7 +2,9 @@
  * PM2 ecosystem for spacetime-travel (production).
  *
  * Usage:
- *   pnpm deploy          # build UI, then startOrReload
+ *   pnpm build              # UI → server/public (when UI changed)
+ *   pnpm build:server       # server → dist/server (when server changed)
+ *   pnpm deploy             # pm2 startOrReload
  *   pnpm pm2:logs
  *   pnpm pm2:stop
  *
@@ -12,8 +14,7 @@ module.exports = {
   apps: [
     {
       name: 'spacetime-travel',
-      script: 'tsx',
-      args: 'server/index.ts',
+      script: 'dist/server/index.js',
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,

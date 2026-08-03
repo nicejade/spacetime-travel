@@ -46,6 +46,7 @@ FROM deps AS build
 COPY . .
 
 RUN pnpm build \
+  && pnpm build:server \
   && pnpm prune --prod
 
 # ---------------------------------------------------------------------------
@@ -55,9 +56,7 @@ FROM base AS production
 
 ENV NODE_ENV=production \
     PORT=5168 \
-    SPACETIME_DB_PATH=/app/data/spacetime-travel.sqlite \
-    # so `tsx` from node_modules/.bin is on PATH
-    PATH="/app/node_modules/.bin:/pnpm:$PATH"
+    SPACETIME_DB_PATH=/app/data/spacetime-travel.sqlite
 
 # tini reaps zombies and forwards signals (SIGTERM → graceful shutdown)
 RUN apt-get update \
@@ -70,8 +69,9 @@ RUN apt-get update \
 COPY --from=build --chown=node:node /app/package.json ./
 COPY --from=build --chown=node:node /app/pnpm-workspace.yaml ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
-COPY --from=build --chown=node:node /app/server ./server
-COPY --from=build --chown=node:node /app/shared ./shared
+COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/server/public ./server/public
+COPY --from=build --chown=node:node /app/server/data ./server/data
 
 USER node
 
@@ -84,4 +84,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||5168)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["tini", "--"]
-CMD ["tsx", "server/index.ts"]
+CMD ["node", "dist/server/index.js"]
