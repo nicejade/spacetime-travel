@@ -13,7 +13,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "start": "node server/dist/server/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test \"server/**/*.test.ts\" \"client/**/*.test.ts\" \"shared/**/*.test.ts\"",
+    "test": "node --import tsx --test \"server/test/**/*.test.ts\" \"client/**/*.test.ts\" \"shared/**/*.test.ts\"",
     "smoke:visit-origin": "node --import tsx scripts/smoke-visit-origin.mjs",
     "build:gazetteer": "node scripts/build-gazetteer.mjs",
     "pm2:start": "pm2 start ecosystem.config.cjs",

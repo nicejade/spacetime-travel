@@ -4,9 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, it } from 'node:test';
 import Database from 'better-sqlite3';
-import { ensureLocation } from './locations.js';
-import { migrate } from './migrations.js';
-import { rebuildSequencesAndLegs } from './rebuildLegs.js';
+import { ensureLocation } from '../src/locations.js';
+import { migrate } from '../src/migrations.js';
+import { rebuildSequencesAndLegs } from '../src/rebuildLegs.js';
 
 const tempDirs: string[] = [];
 

@@ -3,14 +3,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
-import type { VisitPayloadInput } from './types.js';
+import type { VisitPayloadInput } from '../src/types.js';
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spacetime-db-api-'));
 const tempDbPath = path.join(tempDir, 'test.sqlite');
 process.env.SPACETIME_DB_PATH = tempDbPath;
 
 const { createVisit, db, deleteVisit, getAtlas, getExportDocument, importReplace, updateVisit } =
-  await import('./db.js');
+  await import('../src/db.js');
 
 after(() => {
   db.close();

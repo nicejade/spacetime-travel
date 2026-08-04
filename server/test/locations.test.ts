@@ -8,8 +8,8 @@ import {
   ensureLocation,
   mergeDuplicateLocations,
   purgeOrphanLocations
-} from './locations.js';
-import { SCHEMA_VERSION, getUserVersion, listIndexNames, migrate } from './migrations.js';
+} from '../src/locations.js';
+import { SCHEMA_VERSION, getUserVersion, listIndexNames, migrate } from '../src/migrations.js';
 
 const tempDirs: string[] = [];
 

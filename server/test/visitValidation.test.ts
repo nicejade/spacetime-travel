@@ -6,8 +6,8 @@ import {
   parseTransport,
   parseVisitId,
   TRANSPORTS
-} from './visitValidation.js';
-import type { HttpError } from './types.js';
+} from '../src/visitValidation.js';
+import type { HttpError } from '../src/types.js';
 
 function assertHttpError(fn: () => unknown, status: number, messageIncludes: string) {
   try {

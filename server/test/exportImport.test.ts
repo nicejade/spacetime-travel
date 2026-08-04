@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { SCHEMA_VERSION } from './migrations.js';
+import { SCHEMA_VERSION } from '../src/migrations.js';
 import {
   EXPORT_FORMAT,
   buildExportDocument,
   parseExportDocument
-} from './exportImport.js';
+} from '../src/exportImport.js';
 
 describe('parseExportDocument', () => {
   it('accepts a valid export document', () => {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { buildVisitRoutes } from './visitRoutes.js';
+import { buildVisitRoutes } from '../src/visitRoutes.js';
 
 const origin = { id: 1, name: '杭州', country: '中国', lat: 30.27, lng: 120.15, kind: 'city' };
 const dest = { id: 2, name: '上海', country: '中国', lat: 31.23, lng: 121.47, kind: 'city' };
