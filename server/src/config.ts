@@ -2,11 +2,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-/** `server/` under tsx, or `server/dist/server/` under node — both map to repo root. */
-const repoRoot =
-  path.basename(path.dirname(here)) === 'dist'
-    ? path.resolve(here, '../../..')
-    : path.resolve(here, '..');
+const segments = here.split(path.sep);
+const isCompiled = segments.includes('dist');
+/** `server/src` under tsx, or `server/dist/server/src` under node. */
+const repoRoot = isCompiled
+  ? path.resolve(here, '../../../..')
+  : path.resolve(here, '../..');
 
 export const config = {
   port: Number(process.env.PORT || 5168),

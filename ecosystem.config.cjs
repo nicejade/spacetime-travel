@@ -14,7 +14,7 @@ module.exports = {
   apps: [
     {
       name: 'spacetime-travel',
-      script: 'server/dist/server/index.js',
+      script: 'server/dist/server/src/index.js',
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,

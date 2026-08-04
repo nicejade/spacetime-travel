@@ -24,7 +24,7 @@ const tempDbPath = path.join(tempDir, 'smoke.sqlite');
 process.env.SPACETIME_DB_PATH = tempDbPath;
 
 try {
-  const { createVisit, db, getAtlas } = await import('../server/db.ts');
+  const { createVisit, db, getAtlas } = await import('../server/src/db.ts');
 
   const atlas = getAtlas();
   console.assert(atlas.visits.length > 0, 'seed visits missing');
