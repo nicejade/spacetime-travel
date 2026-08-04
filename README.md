@@ -301,7 +301,8 @@ Rebuilds the client gazetteer data from GeoNames dumps.
 ├── client/                # Svelte UI (Vite)
 │   ├── App.svelte
 │   ├── components/
-│   └── lib/
+│   ├── lib/
+│   └── public/            # PWA icons + web manifest (Vite publicDir)
 ├── server/                # Fastify API + production static host
 │   ├── index.ts
 │   ├── config.ts          # port, publicPath, default DB path
