@@ -26,6 +26,7 @@ The app is designed around a spatial timeline: past journeys are plotted on an o
 - Svelte 5 (components still largely use Svelte 4-style `let` / `$:` syntax)
 - Vite 6
 - Tailwind CSS 4 — installed for base/reset only; UI styling lives in `client/app.css` and component scoped CSS (semantic classes, not utility-first)
+- Production Vite build includes a PWA Service Worker (`vite-plugin-pwa`): app shell is precached; `/api/*` stays network-only.
 - Fastify 5 + `@fastify/static`
 - SQLite via `better-sqlite3` (WAL)
 - `d3-geo`, `topojson-client`, and `world-atlas` for the offline map
