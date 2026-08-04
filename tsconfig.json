@@ -22,7 +22,7 @@
     "client/**/*.ts",
     "client/**/*.svelte",
     "client/**/*.d.ts",
-    "server/**/*.ts",
+    "server/src/**/*.ts",
     "shared/**/*.ts",
     "vite.config.ts"
   ]

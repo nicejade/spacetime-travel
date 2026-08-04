@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "concurrently -n api,vite -c cyan,magenta \"pnpm api\" \"pnpm client\"",
     "client": "vite --host 0.0.0.0 --port 5167 --strictPort",
-    "api": "tsx watch server/index.ts",
+    "api": "tsx watch server/src/index.ts",
     "build": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "preview": "vite preview --host 0.0.0.0",

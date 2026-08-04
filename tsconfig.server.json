@@ -11,6 +11,6 @@
 		"declaration": false,
 		"sourceMap": true
 	},
-	"include": ["server/**/*.ts", "shared/**/*.ts"],
-	"exclude": ["**/*.test.ts"]
+	"include": ["server/src/**/*.ts", "shared/**/*.ts"],
+	"exclude": ["**/*.test.ts", "server/test/**"]
 }

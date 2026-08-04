@@ -1,4 +1,4 @@
-import { buildYearColors, visitYear } from '../../shared/years.js';
+import { buildYearColors, visitYear } from '../../../shared/years.js';
 import { db } from '../db/connection.js';
 import { buildVisitRoutes } from '../visitRoutes.js';
 import {
