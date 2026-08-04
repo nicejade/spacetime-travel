@@ -28,8 +28,8 @@
 | --- | --- |
 | 离线世界地图、pan/zoom、交通虚线、年份着色 | `client/components/TravelCanvas.svelte` |
 | 跨日界线路由拆段 | `client/lib/movie/pathSampler.ts` `buildRouteGeometry` |
-| Visit CRUD + 情感字段 + 地名搜索/地图点选 | `VisitForm` / `LocationPicker` / `server/db.ts` |
-| 出发起点与回程（`origin_*` / `outbound_*` / `return_*` / `inbound_*`） | `server/db.ts`、`visitRoutes.ts` |
+| Visit CRUD + 情感字段 + 地名搜索/地图点选 | `VisitForm` / `LocationPicker` / `server/src/db.ts` |
+| 出发起点与回程（`origin_*` / `outbound_*` / `return_*` / `inbound_*`） | `server/src/db.ts`、`server/src/services/visitRoutes.ts` |
 | 年份筛选（无 trips 表） | `App.svelte` |
 | 自定义删除确认（非原生 `confirm`） | `client/lib/confirm.ts` + `ConfirmDialog.svelte` |
 | 电影模式（rAF 引擎、镜头、WebM 导出） | `client/lib/movie/`、`MovieOverlay.svelte` |
@@ -43,7 +43,7 @@
 - `visits`：记忆节点；含 destination + origin；`outbound_*` / `return_*` / `inbound_*`
 - `legs`：按 `arrived_at` 排序后的相邻站间连线（由目标 visit 的 `inbound_*` 重建）
 - `visitRoutes`：读时合成（去程/回程），不落库；电影模式只走 `legs`
-- Schema：`PRAGMA user_version` 迁移（`server/migrations.ts`）；当前 `SCHEMA_VERSION = 2`；locations 按 `name + country` 复用
+- Schema：`PRAGMA user_version` 迁移（`server/src/db/migrations.ts`）；当前 `SCHEMA_VERSION = 2`；locations 按 `name + country` 复用
 
 **Visit origin 备忘**：
 
@@ -348,7 +348,7 @@
 | 删除确认 UI | `ConfirmDialog` + `confirm()` Promise API（**不是**原生 `confirm`） |
 | 跨日界线路由 | `pathSampler.buildRouteGeometry`；Canvas/海报/电影共用 |
 | 端口 5167/5168 | `package.json` 与 README 已对齐（以仓库当前文件为准） |
-| Schema 迁移机制 | `server/migrations.ts` + `PRAGMA user_version`；空库/旧库可升到当前版本 |
+| Schema 迁移机制 | `server/src/db/migrations.ts` + `PRAGMA user_version`；空库/旧库可升到当前版本 |
 | FK 列索引 | 迁移 1：`idx_visits_location_id` 等四条 |
 | locations 实体化 | `ensureLocation` 复用、`purgeOrphanLocations`、迁移 2 去重 + `idx_locations_name_country` |
 | legs 大圆距离 | Haversine 写入 `distance_km`；Stats 总里程 + 交通里程 |
@@ -361,7 +361,7 @@
 | JSON 导出导入 | `/api/export` + `/api/import`（替换策略）；侧栏入口 |
 | 删除撤销 | 删除后 8s Toast「撤销」→ `createVisit` 恢复 |
 | 地图 pan clamp / 电影 viewport / path 预计算 | `clampMapPan`；resize → `setViewport`；`countryPaths` |
-| 共享 years / server 类型边界 | `shared/years.ts`；`VisitRoute` 迁入 `server/types.ts` |
+| 共享 years / server 类型边界 | `shared/years.ts`；`VisitRoute` 迁入 `server/src/types.ts` |
 | App 编排拆分（部分） | `movie/session.ts` + `poster/preview.ts`；App 行数下降 |
 | resolveLegs Map 索引 | 电影模式 leg 解析 O(n+m)；`engine.test.ts` |
 | 模态 focus trap | `focusTrap` action；VisitForm / ConfirmDialog Tab 循环 + Esc |
@@ -413,7 +413,7 @@
 ## 实现备忘（给 Agent）
 
 - 主画布：`client/components/TravelCanvas.svelte`
-- API / DB：`server/index.ts`（Fastify）、`server/db.ts`、`server/migrations.ts`、`server/visitRoutes.ts`
+- API / DB：`server/src/index.ts`（Fastify）、`server/src/db.ts`、`server/src/db/migrations.ts`、`server/src/services/visitRoutes.ts`
 - Schema 版本：`PRAGMA user_version`；新增迁移时 bump `SCHEMA_VERSION` 并在 `migrations` 字典注册
 - 运行时 DB：`server/data/spacetime-travel.sqlite`（gitignore）；可用 `SPACETIME_DB_PATH` 覆盖（测试 / smoke）
 - 构建输出：`server/public/`（已 gitignore）
@@ -421,15 +421,15 @@
 - 测试：`pnpm test`；smoke：`pnpm smoke:visit-origin`（临时库，不写默认 DB）
 - 现有测试文件：
   ```bash
-  server/db.test.ts
-  server/migrations.test.ts
-  server/locations.test.ts
-  server/haversine.test.ts
-  server/legDistance.test.ts
-  server/rebuildLegs.test.ts
-  server/visitValidation.test.ts
-  server/visitRoutes.test.ts
-  server/exportImport.test.ts
+  server/test/db.test.ts
+  server/test/migrations.test.ts
+  server/test/locations.test.ts
+  server/test/haversine.test.ts
+  server/test/legDistance.test.ts
+  server/test/rebuildLegs.test.ts
+  server/test/visitValidation.test.ts
+  server/test/visitRoutes.test.ts
+  server/test/exportImport.test.ts
   client/lib/stats/compute.test.ts
   client/lib/movie/pathSampler.test.ts
   client/lib/movie/timeline.test.ts
@@ -455,5 +455,5 @@
 
 ## 安全部署提示（非立即项）
 
-- API 监听 `0.0.0.0` 且无鉴权（`server/index.ts`）；仅适合本机或受信网络。
+- API 监听 `0.0.0.0` 且无鉴权（`server/src/index.ts`）；仅适合本机或受信网络。
 - `deploy2server.sh` 被 gitignore；其中 DB scp 曾注释——部署不会自动同步 sqlite，需运维自觉备份（与 P2-1 互补）。
