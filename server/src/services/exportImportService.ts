@@ -1,9 +1,9 @@
 import { db } from '../db/connection.js';
-import { buildExportDocument, parseExportDocument, type ExportVisit } from '../exportImport.js';
-import { SCHEMA_VERSION } from '../migrations.js';
+import { buildExportDocument, parseExportDocument, type ExportVisit } from './exportImport.js';
+import { SCHEMA_VERSION } from '../db/migrations.js';
 import { getAtlas } from '../models/atlas.js';
 import { clearAllAtlasData, insertParsedVisit, type NormalizedVisit } from '../models/visit.js';
-import { rebuildSequencesAndLegs } from '../rebuildLegs.js';
+import { rebuildSequencesAndLegs } from './rebuildLegs.js';
 import { readVisitPayload } from './visitPayload.js';
 
 function visitToExportPayload(visit: NormalizedVisit): ExportVisit {

@@ -8,7 +8,7 @@ import {
   insertParsedVisit,
   updateVisitRow
 } from '../models/visit.js';
-import { rebuildSequencesAndLegs } from '../rebuildLegs.js';
+import { rebuildSequencesAndLegs } from './rebuildLegs.js';
 import type { VisitPayloadInput } from '../types.js';
 import { readVisitPayload } from './visitPayload.js';
 

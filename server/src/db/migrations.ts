@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 import {
   ensureLocationUniqueIndex,
   mergeDuplicateLocations
-} from './locations.js';
+} from '../locations.js';
 
 /** Current schema version. Bump when adding a migration below. */
 export const SCHEMA_VERSION = 2;

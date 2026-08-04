@@ -9,7 +9,7 @@ import {
   mergeDuplicateLocations,
   purgeOrphanLocations
 } from '../src/locations.js';
-import { SCHEMA_VERSION, getUserVersion, listIndexNames, migrate } from '../src/migrations.js';
+import { SCHEMA_VERSION, getUserVersion, listIndexNames, migrate } from '../src/db/migrations.js';
 
 const tempDirs: string[] = [];
 

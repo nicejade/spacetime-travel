@@ -4,9 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, it } from 'node:test';
 import Database from 'better-sqlite3';
-import { distanceBetweenKm, visitDestinationCoords } from '../src/haversine.js';
+import { distanceBetweenKm, visitDestinationCoords } from '../src/lib/haversine.js';
 import { ensureLocation } from '../src/locations.js';
-import { migrate } from '../src/migrations.js';
+import { migrate } from '../src/db/migrations.js';
 
 const tempDirs: string[] = [];
 

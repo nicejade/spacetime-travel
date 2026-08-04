@@ -1,6 +1,6 @@
-import { httpError } from './lib/httpError.js';
-import { SCHEMA_VERSION } from './migrations.js';
-import type { VisitPayloadInput } from './types.js';
+import { httpError } from '../lib/httpError.js';
+import { SCHEMA_VERSION } from '../db/migrations.js';
+import type { VisitPayloadInput } from '../types.js';
 
 export const EXPORT_FORMAT = 'spacetime-travel';
 

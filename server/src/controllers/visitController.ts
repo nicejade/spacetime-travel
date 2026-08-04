@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { VisitPayloadInput } from '../types.js';
 import { createVisit, deleteVisit, updateVisit, withAtlas } from '../services/visitService.js';
-import { parseVisitId } from '../visitValidation.js';
+import { parseVisitId } from '../services/visitValidation.js';
 
 type VisitParams = { id: string };
 

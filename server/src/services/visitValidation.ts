@@ -1,4 +1,4 @@
-import { httpError } from './lib/httpError.js';
+import { httpError } from '../lib/httpError.js';
 
 export const TRANSPORTS = ['flight', 'train', 'ferry', 'drive', 'bus', 'walk'] as const;
 export type Transport = (typeof TRANSPORTS)[number];

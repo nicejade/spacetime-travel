@@ -2,8 +2,8 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from '../config.js';
-import { migrate } from '../migrations.js';
-import { rebuildSequencesAndLegs } from '../rebuildLegs.js';
+import { migrate } from './migrations.js';
+import { rebuildSequencesAndLegs } from '../services/rebuildLegs.js';
 import { seedIfEmpty } from './seed.js';
 
 const dbPath = config.dbPath;

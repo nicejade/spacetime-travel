@@ -1,6 +1,6 @@
 import { httpError } from '../lib/httpError.js';
 import type { ParsedVisitPayload, VisitPayloadInput } from '../types.js';
-import { assertDateOrder, parseIsoDate, parseTransport } from '../visitValidation.js';
+import { assertDateOrder, parseIsoDate, parseTransport } from './visitValidation.js';
 
 function cleanString(value: unknown, fallback = ''): string {
   if (typeof value !== 'string') return fallback;

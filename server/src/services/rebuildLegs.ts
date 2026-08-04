@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import { distanceBetweenKm } from './haversine.js';
+import { distanceBetweenKm } from '../lib/haversine.js';
 
 export interface RebuildLegsOptions {
   focusVisitId?: number;

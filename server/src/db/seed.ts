@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 import { ensureLocation } from '../models/location.js';
-import { rebuildSequencesAndLegs } from '../rebuildLegs.js';
+import { rebuildSequencesAndLegs } from '../services/rebuildLegs.js';
 
 interface SeedVisit {
   location: [string, string, number, number];

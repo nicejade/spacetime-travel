@@ -10,7 +10,7 @@ import {
   getUserVersion,
   listIndexNames,
   migrate
-} from '../src/migrations.js';
+} from '../src/db/migrations.js';
 
 const tempDirs: string[] = [];
 
