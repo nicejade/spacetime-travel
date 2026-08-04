@@ -11,7 +11,7 @@ Favicon and Web App Manifest assets already live under `client/public/` (RealFav
 - `favicon.ico`, `favicon.svg`, `favicon-96x96.png`
 - `apple-touch-icon.png`
 - `web-app-manifest-192x192.png`, `web-app-manifest-512x512.png`
-- `site.webmanifest`
+- `manifest.json`
 
 Gaps today:
 
@@ -41,7 +41,7 @@ Use **`vite-plugin-pwa`** (Workbox) with `registerType: 'autoUpdate'`.
 
 ### Vite
 
-- Set `publicDir: 'client/public'` so icons and `site.webmanifest` are copied into `server/public/` on `pnpm build`.
+- Set `publicDir: 'client/public'` so icons and `manifest.json` are copied into `server/public/` on `pnpm build`.
 - Add `VitePWA` with:
   - Precache of build assets + public static files
   - `workbox.navigateFallback: '/index.html'` for SPA-style navigation (Fastify already falls back to `index.html` for non-API routes)
@@ -57,7 +57,7 @@ Wire RealFaviconGenerator tags:
 <link rel="shortcut icon" href="/favicon.ico" />
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 <meta name="apple-mobile-web-app-title" content="时空旅行" />
-<link rel="manifest" href="/site.webmanifest" />
+<link rel="manifest" href="/manifest.json" />
 ```
 
 Also:
@@ -65,7 +65,7 @@ Also:
 - `<title>` → `时空旅行`
 - Keep / align `theme-color` with the shell background (`#edf7f6`, matching the existing meta)
 
-### Manifest (`client/public/site.webmanifest`)
+### Manifest (`client/public/manifest.json`)
 
 Complete install metadata:
 
@@ -111,7 +111,7 @@ SW registration is injected by the plugin at build time; no manual `navigator.se
 
 ## Testing / verification
 
-1. `pnpm build` — confirm `server/public/` contains icons, `site.webmanifest`, SW files (`sw.js` / workbox), and hashed assets.
+1. `pnpm build` — confirm `server/public/` contains icons, `manifest.json`, SW files (`sw.js` / workbox), and hashed assets.
 2. `pnpm preview` or production `pnpm start` — Application panel: Manifest valid; SW registered; icons resolve.
 3. DevTools → Network offline: shell loads; `/api/atlas` fails (not cached).
 4. Lighthouse / Chrome installability: install prompt available on a secure origin (localhost OK).

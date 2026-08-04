@@ -4,7 +4,7 @@
 
 **Goal:** Make the Vite client installable as a PWA with branded icons/manifest and shell-offline / API-online Service Worker caching.
 
-**Architecture:** Point Vite `publicDir` at `client/public/` (existing RealFaviconGenerator assets). Wire favicon + `site.webmanifest` links in root `index.html`. Add `vite-plugin-pwa` with Workbox precache for the app shell and NetworkOnly for `/api/**`. Keep Fastify routes unchanged.
+**Architecture:** Point Vite `publicDir` at `client/public/` (existing RealFaviconGenerator assets). Wire favicon + `manifest.json` links in root `index.html`. Add `vite-plugin-pwa` with Workbox precache for the app shell and NetworkOnly for `/api/**`. Keep Fastify routes unchanged.
 
 **Tech Stack:** Vite 6, Svelte 5, `vite-plugin-pwa` (Workbox), existing Fastify static host (`server/public/`)
 
@@ -13,7 +13,7 @@
 - Shell offline only; `/api/*` must never be cached (NetworkOnly)
 - No custom install prompt UI
 - No Fastify / visit business-logic changes
-- Prefer existing `client/public/site.webmanifest` over plugin-generated manifest (`manifest: false` on VitePWA)
+- Prefer existing `client/public/manifest.json` over plugin-generated manifest (`manifest: false` on VitePWA)
 - Commit messages: English + gitmoji per `AGENTS.md`
 - Spec: `docs/superpowers/specs/2026-08-04-client-pwa-design.md`
 
@@ -22,7 +22,7 @@
 | File | Role |
 |------|------|
 | `client/public/*` | Icons + hand-written web manifest (git-track) |
-| `client/public/site.webmanifest` | Install metadata (name, colors, icons any+maskable) |
+| `client/public/manifest.json` | Install metadata (name, colors, icons any+maskable) |
 | `index.html` | Favicon / apple-touch / manifest / title / theme-color |
 | `vite.config.ts` | `publicDir` + `VitePWA` Workbox config |
 | `package.json` | Add `vite-plugin-pwa` devDependency |
@@ -30,17 +30,17 @@
 
 ---
 
-### Task 1: Track assets + complete `site.webmanifest`
+### Task 1: Track assets + complete `manifest.json`
 
 **Files:**
-- Modify: `client/public/site.webmanifest`
+- Modify: `client/public/manifest.json`
 - Track: `client/public/favicon.ico`, `favicon.svg`, `favicon-96x96.png`, `apple-touch-icon.png`, `web-app-manifest-192x192.png`, `web-app-manifest-512x512.png`
 
 **Interfaces:**
-- Produces: Manifest at `/site.webmanifest` with `start_url: '/'`, `lang: 'zh-CN'`, `theme_color` / `background_color` `#edf7f6`, and 192/512 icons each with `any` + `maskable` entries
+- Produces: Manifest at `/manifest.json` with `start_url: '/'`, `lang: 'zh-CN'`, `theme_color` / `background_color` `#edf7f6`, and 192/512 icons each with `any` + `maskable` entries
 - Consumes: Existing PNG/SVG/ICO files already on disk under `client/public/`
 
-- [ ] **Step 1: Replace `client/public/site.webmanifest` contents**
+- [ ] **Step 1: Replace `client/public/manifest.json` contents**
 
 Write exactly:
 
@@ -90,7 +90,7 @@ Run:
 ls -la client/public/
 ```
 
-Expected: all seven files present (`favicon.ico`, `favicon.svg`, `favicon-96x96.png`, `apple-touch-icon.png`, `web-app-manifest-192x192.png`, `web-app-manifest-512x512.png`, `site.webmanifest`).
+Expected: all seven files present (`favicon.ico`, `favicon.svg`, `favicon-96x96.png`, `apple-touch-icon.png`, `web-app-manifest-192x192.png`, `web-app-manifest-512x512.png`, `manifest.json`).
 
 - [ ] **Step 3: Commit**
 
@@ -111,7 +111,7 @@ EOF
 - Modify: `index.html`
 
 **Interfaces:**
-- Consumes: Public URLs `/favicon-96x96.png`, `/favicon.svg`, `/favicon.ico`, `/apple-touch-icon.png`, `/site.webmanifest`
+- Consumes: Public URLs `/favicon-96x96.png`, `/favicon.svg`, `/favicon.ico`, `/apple-touch-icon.png`, `/manifest.json`
 - Produces: Document title `时空旅行`; `theme-color` `#edf7f6`; apple web app title `时空旅行`
 
 - [ ] **Step 1: Update `index.html` head**
@@ -130,7 +130,7 @@ Replace the entire file with:
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="时空旅行" />
-    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="manifest" href="/manifest.json" />
     <title>时空旅行</title>
   </head>
   <body>
@@ -200,7 +200,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      // Hand-written site.webmanifest in client/public — do not emit a second manifest
+      // Hand-written manifest.json in client/public — do not emit a second manifest
       manifest: false,
       includeAssets: [
         'favicon.ico',
@@ -209,7 +209,7 @@ export default defineConfig({
         'apple-touch-icon.png',
         'web-app-manifest-192x192.png',
         'web-app-manifest-512x512.png',
-        'site.webmanifest'
+        'manifest.json'
       ],
       workbox: {
         navigateFallback: '/index.html',
@@ -257,7 +257,7 @@ pnpm build
 Then:
 
 ```bash
-ls server/public/favicon.ico server/public/favicon.svg server/public/site.webmanifest \
+ls server/public/favicon.ico server/public/favicon.svg server/public/manifest.json \
   server/public/apple-touch-icon.png \
   server/public/web-app-manifest-192x192.png \
   server/public/web-app-manifest-512x512.png
@@ -267,7 +267,7 @@ rg -n "serviceWorker|registerSW|workbox" server/public/index.html
 
 Expected:
 
-- All listed icons + `site.webmanifest` exist under `server/public/`
+- All listed icons + `manifest.json` exist under `server/public/`
 - A service worker file exists (commonly `sw.js` plus a `workbox-*.js` chunk; names may vary slightly by plugin version)
 - Built `index.html` contains SW registration injection (script tag or inline) and still has the favicon/manifest link tags
 
@@ -288,7 +288,7 @@ Expected: No precache entry for `/api/atlas` or other API routes. Mentions of `N
 1. Run `pnpm preview` (or `pnpm build:server && pnpm start` if exercising Fastify static host).
 2. Open the app on `http://localhost:<port>/`.
 3. DevTools → Application:
-   - Manifest loads from `/site.webmanifest` (name 时空旅行, theme `#edf7f6`)
+   - Manifest loads from `/manifest.json` (name 时空旅行, theme `#edf7f6`)
    - Service worker status: activated
    - Icons resolve (no 404)
 4. DevTools → Network → Offline:
@@ -334,5 +334,5 @@ EOF
 ## Self-Review Notes
 
 - No placeholder steps; SW file names may vary — Step 3 uses a fallback `ls` glob.
-- `manifest: false` avoids conflicting with hand-written `site.webmanifest` linked from HTML.
+- `manifest: false` avoids conflicting with hand-written `manifest.json` linked from HTML.
 - Unit tests are not added: behavior is build/config + browser Application panel; artifact assertions replace TDD for this config-only feature.

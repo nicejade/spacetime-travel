@@ -12,7 +12,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      // Hand-written site.webmanifest in client/public — do not emit a second manifest
+      // Hand-written manifest.json in client/public — do not emit a second manifest
       manifest: false,
       includeAssets: [
         'favicon.ico',
@@ -21,7 +21,7 @@ export default defineConfig({
         'apple-touch-icon.png',
         'web-app-manifest-192x192.png',
         'web-app-manifest-512x512.png',
-        'site.webmanifest'
+        'manifest.json'
       ],
       workbox: {
         navigateFallback: '/index.html',
