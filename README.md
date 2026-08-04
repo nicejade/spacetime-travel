@@ -210,7 +210,7 @@ docker compose exec app sh
 
 - There is **no authentication**. Expose the port only on localhost or a trusted network (or put a reverse proxy / auth layer in front).
 - The image is not intended for multi-tenant production SaaS; it is a local-first atlas packaged for self-hosting.
-- Production runs the compiled entry (`node server/dist/server/index.js` after `pnpm build:server`). Dev still uses `tsx` via `pnpm api` / `pnpm dev`.
+- Production runs the compiled entry (`node server/dist/server/src/index.js` after `pnpm build:server`). Dev still uses `tsx` via `pnpm api` / `pnpm dev`.
 
 ## Scripts
 
@@ -248,7 +248,7 @@ Compiles the Fastify API and shared modules to `server/dist/`.
 pnpm start
 ```
 
-Runs `node server/dist/server/index.js` (requires a prior `pnpm build:server`). If `server/public/` exists, the same process also serves the production frontend.
+Runs `node server/dist/server/src/index.js` (requires a prior `pnpm build:server`). If `server/public/` exists, the same process also serves the production frontend.
 
 ```bash
 pnpm deploy
@@ -277,7 +277,7 @@ Runs TypeScript checking (`tsc --noEmit`).
 pnpm test
 ```
 
-Runs unit tests under `server/` and `client/`.
+Runs unit tests under `server/test/`, `client/`, and `shared/`.
 
 CI (GitHub Actions) runs `pnpm typecheck` and `pnpm test` on pushes to `main` / `feat/**` and on pull requests.
 
@@ -302,14 +302,20 @@ Rebuilds the client gazetteer data from GeoNames dumps.
 │   ├── components/
 │   └── lib/
 ├── server/                # Fastify API + production static host
-│   ├── index.ts
-│   ├── config.ts          # port, publicPath, default DB path
-│   ├── db/                # connection + seed
+│   ├── src/               # Application source
+│   │   ├── index.ts
+│   │   ├── app.ts
+│   │   ├── config.ts      # port, publicPath, default DB path
+│   │   ├── db/            # connection, seed, migrations
+│   │   ├── models/
+│   │   ├── services/
+│   │   ├── controllers/
+│   │   ├── routes/
+│   │   └── lib/
+│   ├── test/              # Server unit tests
 │   ├── data/              # Runtime SQLite (gitignored; .gitkeep only)
-│   ├── models/            # atlas, visit, location
-│   ├── services/
-│   ├── routes/
-│   └── public/            # Vite build output (gitignored)
+│   ├── public/            # Vite build output (gitignored)
+│   └── dist/              # tsc output (gitignored)
 ├── shared/                # Isomorphic pure logic used by API + UI
 │   └── years.ts           # Stable year → color palette
 ├── scripts/               # Gazetteer build, smoke tests
@@ -351,7 +357,7 @@ Years and year colors are derived from `arrived_at` at query time (not stored as
 
 The database is seeded only when there are no visits.
 
-**Schema migrations** use SQLite `PRAGMA user_version` (`server/migrations.ts`). On startup the app bootstraps tables if needed, then applies any pending migrations in order. Existing visit data is preserved across additive upgrades (new indexes, columns via `ALTER TABLE`, backfills).
+**Schema migrations** use SQLite `PRAGMA user_version` (`server/src/db/migrations.ts`). On startup the app bootstraps tables if needed, then applies any pending migrations in order. Existing visit data is preserved across additive upgrades (new indexes, columns via `ALTER TABLE`, backfills).
 
 Only delete `server/data/spacetime-travel.sqlite*` when a release notes a **non-migratable** breaking change, or when you intentionally want a clean reseed.
 
