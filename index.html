@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <!-- Desktop-only: force a 1200px layout viewport so narrow screens scale, not reflow -->
     <meta name="viewport" content="width=1200" />
+    <script>
+      // iOS standalone PWAs and some in-app WebViews (e.g. WeChat) do not
+      // shrink a fixed-width viewport to fit the screen; pin initial-scale
+      // explicitly so the 1200px layout scales down instead of getting cropped.
+      (function () {
+        var LAYOUT_WIDTH = 1200;
+        if (screen.width >= LAYOUT_WIDTH) return;
+        var scale = (screen.width / LAYOUT_WIDTH).toFixed(4);
+        document
+          .querySelector('meta[name="viewport"]')
+          .setAttribute('content', 'width=' + LAYOUT_WIDTH + ', initial-scale=' + scale);
+      })();
+    </script>
     <meta name="theme-color" content="#edf7f6" />
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
