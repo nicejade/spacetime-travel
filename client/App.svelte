@@ -229,6 +229,11 @@
   $: statsYear = route.name === 'stats' ? route.year : 'all';
   $: showStatsView = shouldShowStatsView(isNarrow, isStatsRoute);
   $: mapSurfacesOpen = canOpenMapSurfaces(isNarrow);
+  $: if (isNarrow && $movie.active) {
+    // Movie mode is map-only chrome; stop it so the sidebar can take over
+    // instead of leaving the screen blank when the viewport narrows.
+    movie.stop();
+  }
 
   async function loadAtlas() {
     atlasController?.abort();
@@ -503,7 +508,7 @@
     </div>
   {/if}
 
-  {#if !$movie.active}
+  {#if !$movie.active || isNarrow}
   <aside
     class="atlas-sidebar glass-panel max-[1000px]:!bottom-5"
     aria-label="旅行图谱"
