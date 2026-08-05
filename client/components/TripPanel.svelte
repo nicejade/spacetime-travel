@@ -198,12 +198,6 @@
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .panel-body--enter {
-      animation: none;
-    }
-  }
-
   .panel-head {
     border-bottom: 1px solid rgba(31, 54, 63, 0.11);
     padding-bottom: 15px;
@@ -373,26 +367,5 @@
 
   .country-cloud {
     justify-content: center;
-  }
-
-  @media (max-width: 980px) {
-    .detail-panel {
-      top: auto;
-      right: 12px;
-      bottom: 106px;
-      left: 12px;
-      width: auto;
-      max-height: 34dvh;
-      padding: 14px;
-    }
-
-    h2 {
-      font-size: 22px;
-    }
-
-    .quick-facts {
-      grid-template-columns: repeat(4, minmax(132px, 1fr));
-      overflow-x: auto;
-    }
   }
 </style>

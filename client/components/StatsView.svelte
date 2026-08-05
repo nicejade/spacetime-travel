@@ -489,23 +489,4 @@
     font-size: 13px;
     line-height: 1.55;
   }
-
-  @media (max-width: 980px) {
-    .stats-view {
-      padding: 14px;
-    }
-
-    .kpi-row,
-    .module-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .stats-header {
-      grid-template-columns: 1fr;
-    }
-
-    .title-block {
-      order: -1;
-    }
-  }
 </style>

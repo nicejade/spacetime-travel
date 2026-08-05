@@ -428,10 +428,4 @@
     color: #869499;
     font-weight: 600;
   }
-
-  @media (max-width: 720px) {
-    .map-hint {
-      display: none;
-    }
-  }
 </style>

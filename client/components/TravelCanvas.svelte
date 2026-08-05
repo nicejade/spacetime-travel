@@ -661,14 +661,4 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-
-  @media (max-width: 980px) {
-    .canvas-controls {
-      top: auto;
-      right: 12px;
-      bottom: 102px;
-      left: auto;
-      transform: none;
-    }
-  }
 </style>

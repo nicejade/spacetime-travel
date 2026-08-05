@@ -212,10 +212,4 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-
-  @media (max-width: 980px) {
-    .movie-caption {
-      bottom: 118px;
-    }
-  }
 </style>

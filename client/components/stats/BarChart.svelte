@@ -107,16 +107,4 @@
     font-size: 13px;
     line-height: 1.55;
   }
-
-  @media (max-width: 640px) {
-    .bar-chart li {
-      grid-template-columns: minmax(48px, 72px) 1fr minmax(32px, auto);
-      gap: 8px 10px;
-      padding: 2px 4px 2px 2px;
-    }
-
-    .track {
-      height: 14px;
-    }
-  }
 </style>

@@ -941,43 +941,4 @@
     opacity: 0.55;
     cursor: default;
   }
-
-  @media (max-width: 980px) {
-    .atlas-sidebar {
-      top: 12px;
-      right: 12px;
-      bottom: auto;
-      left: 12px;
-      width: auto;
-      max-height: 34dvh;
-      overflow: auto;
-      padding: 14px;
-    }
-
-    .brand-row {
-      align-items: center;
-    }
-
-    h1 {
-      font-size: 19px;
-    }
-
-    .stats-grid {
-      grid-template-columns: repeat(4, minmax(106px, 1fr));
-      overflow-x: auto;
-      padding-bottom: 2px;
-    }
-
-    .trip-filter {
-      flex-direction: row;
-      overflow-x: auto;
-      overflow-y: hidden;
-      padding: 1px 0 2px;
-    }
-
-    .trip-filter button {
-      flex: 0 0 auto;
-      white-space: nowrap;
-    }
-  }
 </style>

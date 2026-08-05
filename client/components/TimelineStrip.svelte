@@ -113,17 +113,4 @@
     font-size: 12px;
     font-variant-numeric: tabular-nums;
   }
-
-  @media (max-width: 980px) {
-    .timeline {
-      right: 12px;
-      bottom: 12px;
-      left: 12px;
-      min-height: 82px;
-    }
-
-    button {
-      min-width: 138px;
-    }
-  }
 </style>

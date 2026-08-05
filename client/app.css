@@ -1,4 +1,5 @@
-@import 'tailwindcss';
+/* Preflight only — skip Tailwind utilities (they inject responsive container breakpoints). */
+@import 'tailwindcss/preflight' layer(base);
 
 :root {
   color: #182633;
@@ -13,12 +14,15 @@
 html,
 body,
 #app {
+  min-width: 1200px;
   min-height: 100%;
 }
 
 body {
   margin: 0;
-  overflow: hidden;
+  /* Desktop-only layout: never reflow under 1200px; allow pan if window is narrower */
+  overflow-x: auto;
+  overflow-y: hidden;
   background:
     radial-gradient(circle at 20% 15%, rgba(226, 112, 91, 0.18), transparent 26rem),
     radial-gradient(circle at 78% 18%, rgba(65, 132, 145, 0.2), transparent 30rem),
@@ -162,15 +166,4 @@ button:disabled {
 .route-walk,
 .route-bus {
   stroke: var(--trip-color, #2d7c89);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-  }
 }

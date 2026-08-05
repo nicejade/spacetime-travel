@@ -651,28 +651,4 @@
     cursor: wait;
     opacity: 0.66;
   }
-
-  @media (max-width: 720px) {
-    .form-backdrop {
-      align-items: end;
-      padding: 12px;
-    }
-
-    .visit-form {
-      max-height: calc(100dvh - 24px);
-    }
-
-    .field-row {
-      grid-template-columns: 1fr;
-    }
-
-    .form-actions {
-      gap: 8px;
-    }
-
-    .form-actions button {
-      flex: 1;
-      min-width: 0;
-    }
-  }
 </style>

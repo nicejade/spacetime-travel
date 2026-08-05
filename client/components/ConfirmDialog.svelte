@@ -108,19 +108,4 @@
     border-color: rgba(170, 62, 54, 0.52);
     background: linear-gradient(135deg, #8a2f29, #b5443c);
   }
-
-  @media (max-width: 480px) {
-    .confirm-backdrop {
-      align-items: end;
-      padding: 12px;
-    }
-
-    .confirm-actions {
-      flex-direction: column-reverse;
-    }
-
-    .confirm-actions :global(button) {
-      width: 100%;
-    }
-  }
 </style>
