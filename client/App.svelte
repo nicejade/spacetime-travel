@@ -50,6 +50,12 @@
   import type { LonLatPick } from '$lib/map/pickLonLat';
   import { get } from 'svelte/store';
 
+  import {
+    NARROW_VIEWPORT_MQ,
+    canOpenMapSurfaces,
+    shouldShowStatsView
+  } from '$lib/viewport';
+
   let atlas: Atlas | null = null;
   let loading = true;
   let error = '';
@@ -69,6 +75,7 @@
   let atlasController: AbortController | null = null;
   let toolsMenuOpen = false;
   let toolsMenuRoot: HTMLElement | null = null;
+  let isNarrow = false;
   let travelCanvas: {
     zoomIn: () => void;
     zoomOut: () => void;
@@ -158,11 +165,20 @@
     window.addEventListener('popstate', syncRoute);
     window.addEventListener('keydown', handleKeydown);
     document.addEventListener('pointerdown', handlePointerDown);
+
+    const narrowMq = window.matchMedia(NARROW_VIEWPORT_MQ);
+    const syncNarrow = () => {
+      isNarrow = narrowMq.matches;
+    };
+    syncNarrow();
+    narrowMq.addEventListener('change', syncNarrow);
+
     return () => {
       clearTimeout(noticeTimer);
       window.removeEventListener('popstate', syncRoute);
       window.removeEventListener('keydown', handleKeydown);
       document.removeEventListener('pointerdown', handlePointerDown);
+      narrowMq.removeEventListener('change', syncNarrow);
       movie.dispose();
     };
   });
@@ -211,6 +227,8 @@
   $: canGeneratePoster = posterDisabledReason === '';
   $: isStatsRoute = route.name === 'stats';
   $: statsYear = route.name === 'stats' ? route.year : 'all';
+  $: showStatsView = shouldShowStatsView(isNarrow, isStatsRoute);
+  $: mapSurfacesOpen = canOpenMapSurfaces(isNarrow);
 
   async function loadAtlas() {
     atlasController?.abort();
@@ -292,7 +310,7 @@
   }
 
   async function openPosterPreview() {
-    if (!canGeneratePoster || typeof selectedYear !== 'number') return;
+    if (!mapSurfacesOpen || !canGeneratePoster || typeof selectedYear !== 'number') return;
     await poster.open({
       year: selectedYear,
       yearColor: yearColors[String(selectedYear)] || '#2d7c89',
@@ -303,7 +321,7 @@
   }
 
   function openStatsView() {
-    if (loading) return;
+    if (loading || !mapSurfacesOpen) return;
     navigate(statsPath());
   }
 
@@ -425,7 +443,7 @@
 </script>
 
 <main class="app-shell">
-  {#if isStatsRoute}
+  {#if showStatsView}
     <StatsView
       visits={visits}
       legs={legs}
@@ -437,50 +455,59 @@
       onStatsYearChange={setStatsYear}
     />
   {:else}
-  <TravelCanvas
-    bind:this={travelCanvas}
-    visits={visibleVisits}
-    plottedVisits={plottedVisits}
-    legs={visibleLegs}
-    visitRoutes={visibleVisitRoutes}
-    selectedVisitId={selectedVisit?.id ?? null}
-    movieMode={$movie.active}
-    movieFrame={$movie.frame}
-    movieActiveLeg={$movie.activeLeg}
-    onSelectVisit={selectVisit}
-    onCreateAt={(place) => openCreate(place)}
-    onStartMovie={movie.start}
-    onViewportChange={movie.setViewport}
-    on:svgready={(event) => {
-      movie.setSvg(event.detail);
-    }}
-  />
+  <div class="max-[999px]:hidden">
+    <TravelCanvas
+      bind:this={travelCanvas}
+      visits={visibleVisits}
+      plottedVisits={plottedVisits}
+      legs={visibleLegs}
+      visitRoutes={visibleVisitRoutes}
+      selectedVisitId={selectedVisit?.id ?? null}
+      movieMode={$movie.active}
+      movieFrame={$movie.frame}
+      movieActiveLeg={$movie.activeLeg}
+      onSelectVisit={selectVisit}
+      onCreateAt={(place) => openCreate(place)}
+      onStartMovie={movie.start}
+      onViewportChange={movie.setViewport}
+      on:svgready={(event) => {
+        movie.setSvg(event.detail);
+      }}
+    />
+  </div>
 
   {#if error && !atlas && !loading}
-    <div class="map-error" role="alert">
-      <p>{error}</p>
-      <button type="button" class="primary-button" on:click={loadAtlas}>重试</button>
+    <div class="max-[999px]:hidden">
+      <div class="map-error" role="alert">
+        <p>{error}</p>
+        <button type="button" class="primary-button" on:click={loadAtlas}>重试</button>
+      </div>
     </div>
   {/if}
 
   {#if $movie.active}
-    <MovieOverlay
-      movieFrame={$movie.frame}
-      visits={plottedVisits}
-      paused={$movie.paused}
-      complete={$movie.complete}
-      exporting={$movie.exporting}
-      exportProgress={$movie.exportProgress}
-      canExport={movie.canExport()}
-      onTogglePause={movie.togglePause}
-      onExit={movie.stop}
-      onSeek={movie.seek}
-      onExport={movie.exportVideo}
-    />
+    <div class="max-[999px]:hidden">
+      <MovieOverlay
+        movieFrame={$movie.frame}
+        visits={plottedVisits}
+        paused={$movie.paused}
+        complete={$movie.complete}
+        exporting={$movie.exporting}
+        exportProgress={$movie.exportProgress}
+        canExport={movie.canExport()}
+        onTogglePause={movie.togglePause}
+        onExit={movie.stop}
+        onSeek={movie.seek}
+        onExport={movie.exportVideo}
+      />
+    </div>
   {/if}
 
   {#if !$movie.active}
-  <aside class="atlas-sidebar glass-panel" aria-label="旅行图谱">
+  <aside
+    class="atlas-sidebar glass-panel max-[999px]:!bottom-5"
+    aria-label="旅行图谱"
+  >
     <div class="brand-row">
       <div class="brand-identity">
         <div class="brand-mark">
@@ -510,8 +537,8 @@
             <button
               type="button"
               role="menuitem"
-              disabled={loading}
-              title="查看旅行统计"
+              disabled={loading || !mapSurfacesOpen}
+              title={mapSurfacesOpen ? '查看旅行统计' : '需屏幕宽度 ≥ 1000px'}
               on:click={() => runToolsAction(openStatsView)}
             >
               <BarChart3 size={17} />旅行统计
@@ -519,8 +546,12 @@
             <button
               type="button"
               role="menuitem"
-              disabled={!canGeneratePoster}
-              title={posterDisabledReason || '生成该年旅行海报'}
+              disabled={!mapSurfacesOpen || !canGeneratePoster}
+              title={
+                !mapSurfacesOpen
+                  ? '需屏幕宽度 ≥ 1000px'
+                  : posterDisabledReason || '生成该年旅行海报'
+              }
               on:click={() => runToolsAction(openPosterPreview)}
             >
               <Image size={17} />生成海报
@@ -547,6 +578,13 @@
         {/if}
       </div>
     </div>
+
+    <p
+      class="m-0 hidden text-[13px] font-semibold leading-normal text-[#4c646c] max-[999px]:block"
+      role="status"
+    >
+      当前屏幕较窄，仅提供数据管理。完整地图、时间轴与详情需宽度 ≥ 1000px。
+    </p>
 
     <input
       bind:this={importInput}
@@ -622,22 +660,26 @@
     {/if}
   </aside>
 
-  <TripPanel
-    visit={selectedVisit}
-    year={selectedVisitYear}
-    yearColor={selectedYearColor}
-    visits={visits}
-    stats={stats}
-    onEdit={openEdit}
-    onDelete={handleDelete}
-  />
+  <div class="max-[999px]:hidden">
+    <TripPanel
+      visit={selectedVisit}
+      year={selectedVisitYear}
+      yearColor={selectedYearColor}
+      visits={visits}
+      stats={stats}
+      onEdit={openEdit}
+      onDelete={handleDelete}
+    />
+  </div>
 
-  <TimelineStrip
-    visits={visibleVisits}
-    yearColors={yearColors}
-    selectedVisitId={selectedVisit?.id ?? null}
-    onSelectVisit={selectVisit}
-  />
+  <div class="max-[999px]:hidden">
+    <TimelineStrip
+      visits={visibleVisits}
+      yearColors={yearColors}
+      selectedVisitId={selectedVisit?.id ?? null}
+      onSelectVisit={selectVisit}
+    />
+  </div>
   {/if}
 
   {#if editorOpen}
@@ -652,14 +694,16 @@
     />
   {/if}
 
-  <PosterPreview
-    open={$poster.open}
-    generating={$poster.generating}
-    blob={$poster.blob}
-    filename={$poster.filename}
-    error={$poster.error}
-    onClose={poster.close}
-  />
+  <div class="max-[999px]:hidden">
+    <PosterPreview
+      open={$poster.open}
+      generating={$poster.generating}
+      blob={$poster.blob}
+      filename={$poster.filename}
+      error={$poster.error}
+      onClose={poster.close}
+    />
+  </div>
   {/if}
 
   <ConfirmDialog />
