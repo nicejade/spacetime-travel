@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import { Play, Plus, RotateCcw, ZoomIn, ZoomOut } from '@lucide/svelte';
+  import { Play, RotateCcw, ZoomIn, ZoomOut } from '@lucide/svelte';
   import { geoGraticule } from 'd3-geo';
   import { formatMonth, transportClass, transportDash } from '$lib/format';
   import { MAP_HEIGHT, MAP_WIDTH, countryFeatures, pathGenerator, projection } from '$lib/geo';
@@ -23,7 +23,6 @@
   export let movieFrame: MovieFrameState | null = null;
   export let movieActiveLeg: { fromVisitId: number; toVisitId: number } | null = null;
   export let onSelectVisit: (id: number) => void = () => {};
-  export let onCreate: () => void = () => {};
   export let onCreateAt: (place: LonLatPick) => void = () => {};
   export let onStartMovie: (viewport: { width: number; height: number }) => void = () => {};
   export let onViewportChange: (viewport: { width: number; height: number }) => void = () => {};
@@ -246,11 +245,6 @@
     setControlStatus('Movie mode');
   }
 
-  function handleCreate() {
-    onCreate();
-    setControlStatus('New visit');
-  }
-
   function handleCanvasDblClick(event: MouseEvent) {
     if (movieMode) return;
     if (event.target instanceof Element) {
@@ -406,53 +400,49 @@
       on:pointercancel={stopControlEvent}
       on:wheel|preventDefault={stopControlEvent}
     >
-      <button
-        type="button"
-        class="icon-button"
-        aria-label="放大"
-        title="放大 (+)"
-        on:click|stopPropagation={() => zoomAt(1.16)}
-      >
-        <ZoomIn size={18} />
-      </button>
-      <button
-        type="button"
-        class="icon-button"
-        aria-label="缩小"
-        title="缩小 (-)"
-        on:click|stopPropagation={() => zoomAt(0.86)}
-      >
-        <ZoomOut size={18} />
-      </button>
-      <button
-        type="button"
-        class="icon-button"
-        aria-label="重置视图"
-        title="重置 (0)"
-        on:click|stopPropagation={fitWorld}
-      >
-        <RotateCcw size={18} />
-      </button>
-      <button
-        type="button"
-        class="icon-button"
-        aria-label="播放电影模式"
-        title="电影模式"
-        disabled={!canStartMovie}
-        on:click|stopPropagation={startMovie}
-      >
-        <Play size={18} />
-      </button>
-      <button
-        type="button"
-        class="icon-button accent"
-        aria-label="新增旅行节点"
-        title="新增 (N)"
-        on:click|stopPropagation={handleCreate}
-      >
-        <Plus size={18} />
-      </button>
-      <output class="control-readout" aria-live="polite">{zoomLabel}</output>
+      <div class="control-group" role="group" aria-label="缩放">
+        <button
+          type="button"
+          class="icon-button"
+          aria-label="缩小"
+          title="缩小 (-)"
+          on:click|stopPropagation={() => zoomAt(0.86)}
+        >
+          <ZoomOut size={18} />
+        </button>
+        <output class="control-readout" aria-live="polite">{zoomLabel}</output>
+        <button
+          type="button"
+          class="icon-button"
+          aria-label="放大"
+          title="放大 (+)"
+          on:click|stopPropagation={() => zoomAt(1.16)}
+        >
+          <ZoomIn size={18} />
+        </button>
+      </div>
+      <span class="control-divider" aria-hidden="true"></span>
+      <div class="control-group" role="group" aria-label="视图">
+        <button
+          type="button"
+          class="icon-button"
+          aria-label="重置视图"
+          title="重置 (0)"
+          on:click|stopPropagation={fitWorld}
+        >
+          <RotateCcw size={18} />
+        </button>
+        <button
+          type="button"
+          class="icon-button"
+          aria-label="播放电影模式"
+          title="电影模式"
+          disabled={!canStartMovie}
+          on:click|stopPropagation={startMovie}
+        >
+          <Play size={18} />
+        </button>
+      </div>
       <span class="sr-only" aria-live="polite">{controlStatus}</span>
     </div>
   {/if}
@@ -625,31 +615,41 @@
     left: 50%;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     border-radius: 999px;
-    padding: 8px;
+    padding: 6px 10px;
     transform: translateX(-50%);
     cursor: default;
     touch-action: manipulation;
   }
 
-  .canvas-controls .accent {
-    background: #235f73;
-    color: #fff;
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .control-divider {
+    width: 1px;
+    height: 22px;
+    flex-shrink: 0;
+    background: rgba(31, 54, 63, 0.14);
   }
 
   .control-readout {
     display: inline-grid;
-    min-width: 56px;
+    min-width: 44px;
     min-height: 44px;
+    padding: 0 4px;
     place-items: center;
-    border: 1px solid rgba(31, 54, 63, 0.1);
+    border: none;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.62);
+    background: transparent;
     color: #263c45;
-    font-size: 13px;
-    font-weight: 800;
+    font-size: 12px;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
   }
 
   .sr-only {

@@ -448,7 +448,6 @@
     movieFrame={$movie.frame}
     movieActiveLeg={$movie.activeLeg}
     onSelectVisit={selectVisit}
-    onCreate={openCreate}
     onCreateAt={(place) => openCreate(place)}
     onStartMovie={movie.start}
     onViewportChange={movie.setViewport}
