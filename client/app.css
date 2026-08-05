@@ -1,5 +1,4 @@
-/* Preflight only — skip Tailwind utilities (they inject responsive container breakpoints). */
-@import 'tailwindcss/preflight' layer(base);
+@import 'tailwindcss';
 
 :root {
   color: #182633;
@@ -14,14 +13,12 @@
 html,
 body,
 #app {
-  min-width: 1200px;
   min-height: 100%;
 }
 
 body {
   margin: 0;
-  /* Desktop-only layout: never reflow under 1200px; allow pan if window is narrower */
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
   background:
     radial-gradient(circle at 20% 15%, rgba(226, 112, 91, 0.18), transparent 26rem),
