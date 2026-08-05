@@ -26,6 +26,20 @@ body {
     linear-gradient(135deg, #f3fbfb 0%, #faf7f2 48%, #eef6ef 100%);
 }
 
+/* Desktop chrome (>= 1000px) needs its 1200px layout width back; let the
+   page pan horizontally between 1000-1199px instead of crushing the map. */
+@media (min-width: 1000px) {
+  html,
+  body,
+  #app {
+    min-width: 1200px;
+  }
+
+  body {
+    overflow-x: auto;
+  }
+}
+
 button,
 input,
 textarea,
