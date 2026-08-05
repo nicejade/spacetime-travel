@@ -455,7 +455,7 @@
       onStatsYearChange={setStatsYear}
     />
   {:else}
-  <div class="max-[999px]:hidden">
+  <div class="max-[1000px]:hidden">
     <TravelCanvas
       bind:this={travelCanvas}
       visits={visibleVisits}
@@ -477,7 +477,7 @@
   </div>
 
   {#if error && !atlas && !loading}
-    <div class="max-[999px]:hidden">
+    <div class="max-[1000px]:hidden">
       <div class="map-error" role="alert">
         <p>{error}</p>
         <button type="button" class="primary-button" on:click={loadAtlas}>重试</button>
@@ -486,7 +486,7 @@
   {/if}
 
   {#if $movie.active}
-    <div class="max-[999px]:hidden">
+    <div class="max-[1000px]:hidden">
       <MovieOverlay
         movieFrame={$movie.frame}
         visits={plottedVisits}
@@ -505,7 +505,7 @@
 
   {#if !$movie.active}
   <aside
-    class="atlas-sidebar glass-panel max-[999px]:!bottom-5"
+    class="atlas-sidebar glass-panel max-[1000px]:!bottom-5"
     aria-label="旅行图谱"
   >
     <div class="brand-row">
@@ -580,7 +580,7 @@
     </div>
 
     <p
-      class="m-0 hidden text-[13px] font-semibold leading-normal text-[#4c646c] max-[999px]:block"
+      class="m-0 hidden text-[13px] font-semibold leading-normal text-[#4c646c] max-[1000px]:block"
       role="status"
     >
       当前屏幕较窄，仅提供数据管理。完整地图、时间轴与详情需宽度 ≥ 1000px。
@@ -660,7 +660,7 @@
     {/if}
   </aside>
 
-  <div class="max-[999px]:hidden">
+  <div class="max-[1000px]:hidden">
     <TripPanel
       visit={selectedVisit}
       year={selectedVisitYear}
@@ -672,7 +672,7 @@
     />
   </div>
 
-  <div class="max-[999px]:hidden">
+  <div class="max-[1000px]:hidden">
     <TimelineStrip
       visits={visibleVisits}
       yearColors={yearColors}
@@ -694,7 +694,7 @@
     />
   {/if}
 
-  <div class="max-[999px]:hidden">
+  <div class="max-[1000px]:hidden">
     <PosterPreview
       open={$poster.open}
       generating={$poster.generating}
