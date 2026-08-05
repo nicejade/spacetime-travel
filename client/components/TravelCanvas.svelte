@@ -66,8 +66,12 @@
 
   onMount(() => {
     const resizeObserver = new ResizeObserver(([entry]) => {
-      viewportWidth = entry.contentRect.width;
-      viewportHeight = entry.contentRect.height;
+      const { width, height } = entry.contentRect;
+      // A hidden canvas (e.g. narrow-viewport sidebar mode) reports a 0x0
+      // rect; skip so we never lock in a zero-scale fit or clamp against it.
+      if (width === 0 || height === 0) return;
+      viewportWidth = width;
+      viewportHeight = height;
       onViewportChange({ width: viewportWidth, height: viewportHeight });
       if (!hasFit) {
         fitWorld();
