@@ -1,5 +1,5 @@
 /** Narrow mode: viewport width < 1000px */
-export const NARROW_VIEWPORT_MQ = '(max-width: 999px)';
+export const NARROW_VIEWPORT_MQ = '(width < 1000px)';
 
 export function shouldShowStatsView(isNarrow: boolean, isStatsRoute: boolean): boolean {
   return isStatsRoute && !isNarrow;

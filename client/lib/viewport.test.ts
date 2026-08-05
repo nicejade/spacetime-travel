@@ -4,11 +4,11 @@ import {
   NARROW_VIEWPORT_MQ,
   canOpenMapSurfaces,
   shouldShowStatsView
-} from './viewport.ts';
+} from './viewport';
 
 describe('viewport', () => {
-  it('uses a 999px max-width media query for the 1000px breakpoint', () => {
-    assert.equal(NARROW_VIEWPORT_MQ, '(max-width: 999px)');
+  it('uses a range media query for the 1000px breakpoint', () => {
+    assert.equal(NARROW_VIEWPORT_MQ, '(width < 1000px)');
   });
 
   it('hides stats view when the viewport is narrow', () => {
