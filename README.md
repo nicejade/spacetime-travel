@@ -19,7 +19,6 @@ The app is designed around a spatial timeline: past journeys are plotted on an o
 - **Stats**: trip counts, transport mix, and great-circle distance totals.
 - **Yearly travel poster**: SVG → PNG export.
 - SQLite-backed local persistence with schema migrations (`PRAGMA user_version`).
-- Seed data for demo visits across Asia, Europe, Africa, and the Americas.
 
 ## Tech Stack
 
@@ -165,7 +164,7 @@ docker run --rm -d \
 
 ### Persist data with a bind mount
 
-To use a host directory instead of a named volume (for example to back up or seed `server/data/`):
+To use a host directory instead of a named volume (for example to back up or restore `server/data/`):
 
 ```yaml
 # docker-compose.override.yml (local only; gitignored if you prefer)
@@ -182,7 +181,7 @@ mkdir -p server/data
 sudo chown -R 1000:1000 server/data
 ```
 
-### Seed / migrate an existing database
+### Restore / migrate an existing database
 
 Copy a local SQLite file into the volume, then start the stack:
 
@@ -192,7 +191,7 @@ docker compose cp ./server/data/spacetime-travel.sqlite app:/app/data/spacetime-
 docker compose restart app
 ```
 
-On startup the app applies pending migrations (`PRAGMA user_version`) and seeds only when there are no visits.
+On startup the app applies pending migrations (`PRAGMA user_version`). An empty database stays empty until you add visits or import a backup.
 
 ### Useful commands
 
@@ -308,7 +307,7 @@ Rebuilds the client gazetteer data from GeoNames dumps.
 │   │   ├── index.ts
 │   │   ├── app.ts
 │   │   ├── config.ts      # port, publicPath, default DB path
-│   │   ├── db/            # connection, seed, migrations
+│   │   ├── db/            # connection, migrations
 │   │   ├── models/
 │   │   ├── services/
 │   │   ├── controllers/
@@ -357,11 +356,9 @@ The atlas API also returns **`visitRoutes`**: synthetic outbound/return segments
 
 Years and year colors are derived from `arrived_at` at query time (not stored as entities).
 
-The database is seeded only when there are no visits.
-
 **Schema migrations** use SQLite `PRAGMA user_version` (`server/src/db/migrations.ts`). On startup the app bootstraps tables if needed, then applies any pending migrations in order. Existing visit data is preserved across additive upgrades (new indexes, columns via `ALTER TABLE`, backfills).
 
-Only delete `server/data/spacetime-travel.sqlite*` when a release notes a **non-migratable** breaking change, or when you intentionally want a clean reseed.
+Only delete `server/data/spacetime-travel.sqlite*` when a release notes a **non-migratable** breaking change, or when you want a clean empty database.
 
 ## API Overview
 

@@ -92,7 +92,7 @@
 - **实现**：
   - `server/locations.ts`：`ensureLocation`（按 `name + country` 复用）、`purgeOrphanLocations`、`mergeDuplicateLocations`
   - 迁移 2：合并历史重复行 + `UNIQUE INDEX idx_locations_name_country`
-  - `createVisit` / seed 走 `ensureLocation`；`updateVisit` 换绑 FK 后回收孤儿；`deleteVisit` 删除后回收孤儿
+  - `createVisit` 走 `ensureLocation`；`updateVisit` 换绑 FK 后回收孤儿；`deleteVisit` 删除后回收孤儿
   - 测试：`server/locations.test.ts`
 - **注意**：复用时不改已有行的坐标（避免共享地点被一处编辑污染）；改名/换地靠换绑到新/已有实体。
 

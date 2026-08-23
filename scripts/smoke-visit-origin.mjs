@@ -27,9 +27,8 @@ try {
   const { createVisit, db, getAtlas } = await import('../server/src/db.ts');
 
   const atlas = getAtlas();
-  console.assert(atlas.visits.length > 0, 'seed visits missing');
-  console.assert(atlas.visits[0].origin?.name, 'origin missing on visit');
-  console.assert(atlas.visitRoutes.length >= atlas.visits.length, 'visitRoutes missing');
+  console.assert(atlas.visits.length === 0, 'empty database should not be seeded');
+  console.assert(atlas.visitRoutes.length === 0, 'empty database should have no visitRoutes');
 
   createVisit({
     originName: '家',
@@ -49,6 +48,8 @@ try {
 
   const updated = getAtlas();
   const last = updated.visits.at(-1);
+  console.assert(last?.origin?.name, 'origin missing on visit');
+  console.assert(updated.visitRoutes.length >= updated.visits.length, 'visitRoutes missing');
   console.assert(last?.returnsToOrigin === false, 'returnsToOrigin not saved');
   console.assert(
     updated.visitRoutes.filter((r) => r.visitId === last.id).length === 1,

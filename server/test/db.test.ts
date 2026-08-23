@@ -37,16 +37,27 @@ function payload(overrides: Partial<VisitPayloadInput> = {}): VisitPayloadInput 
 }
 
 describe('db createVisit / getAtlas', () => {
-  it('seeds an empty database and exposes origin + visitRoutes', () => {
+  it('starts empty and does not seed demo visits', () => {
     const atlas = getAtlas();
-    assert.ok(atlas.visits.length > 0);
-    assert.ok(atlas.visits[0].origin?.name);
-    assert.ok(atlas.visitRoutes.length >= atlas.visits.length);
-    assert.equal(atlas.legs.length, atlas.visits.length - 1);
+    assert.equal(atlas.visits.length, 0);
+    assert.equal(atlas.legs.length, 0);
+    assert.equal(atlas.visitRoutes.length, 0);
+    assert.deepEqual(atlas.years, []);
+    assert.equal(atlas.stats.visitCount, 0);
   });
 
   it('creates a visit, rebuilds sequences, and writes leg distance', () => {
     const before = getAtlas().visits.length;
+    createVisit(
+      payload({
+        locationName: '卑尔根',
+        country: '挪威',
+        lat: 60.39,
+        lng: 5.32,
+        arrivedAt: '2026-01-10',
+        inboundTransport: 'flight'
+      })
+    );
     const { visitId } = createVisit(
       payload({
         locationName: '奥斯陆',
@@ -59,7 +70,7 @@ describe('db createVisit / getAtlas', () => {
     );
 
     const atlas = getAtlas();
-    assert.equal(atlas.visits.length, before + 1);
+    assert.equal(atlas.visits.length, before + 2);
     const created = atlas.visits.find((visit) => visit.id === visitId);
     assert.ok(created);
     assert.equal(created.location.name, '奥斯陆');
@@ -236,6 +247,10 @@ describe('db location reuse', () => {
 
 describe('db export / import replace', () => {
   it('round-trips visits through export and replace import', () => {
+    if (getAtlas().visits.length === 0) {
+      createVisit(payload({ locationName: '导出锚点', country: '导出国', lat: 2, lng: 3, arrivedAt: '2035-01-01' }));
+    }
+
     const exported = getExportDocument();
     assert.ok(exported.visits.length > 0);
     assert.equal(typeof exported.schemaVersion, 'number');

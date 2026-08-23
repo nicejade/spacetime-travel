@@ -4,7 +4,6 @@ import path from 'node:path';
 import { config } from '../config.js';
 import { migrate } from './migrations.js';
 import { rebuildSequencesAndLegs } from '../services/rebuildLegs.js';
-import { seedIfEmpty } from './seed.js';
 
 const dbPath = config.dbPath;
 
@@ -16,7 +15,6 @@ export const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 migrate(db);
-seedIfEmpty(db);
 
 /** One-shot backfill for DBs whose legs were written before distance_km was populated. */
 function backfillLegDistancesIfNeeded() {
